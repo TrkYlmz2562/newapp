@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="InstaWallpaper">
+  <title>InstaWallpaper</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; overflow: hidden; background: #000; color: #fff; font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif; }
+
+    /* ── Screens ── */
+    .screen { position: fixed; inset: 0; display: none; flex-direction: column; }
+    .screen.active { display: flex; }
+
+    /* ── Settings ── */
+    #settings-screen { background: #1c1c1e; overflow-y: auto; }
+
+    .nav-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 16px; padding-top: calc(14px + env(safe-area-inset-top));
+      border-bottom: 1px solid #38383a; background: #1c1c1e;
+      position: sticky; top: 0; z-index: 10;
+    }
+    .nav-title { font-size: 17px; font-weight: 600; }
+    .btn-nav {
+      background: none; border: none; color: #0a84ff;
+      font-size: 17px; cursor: pointer; padding: 4px 0; min-width: 60px;
+    }
+    .btn-nav:disabled { color: #48484a; }
+    .btn-nav.right { text-align: right; }
+    .btn-nav.left { text-align: left; }
+
+    .scroll-body {
+      flex: 1; overflow-y: auto;
+      padding: 20px 16px;
+      padding-bottom: calc(24px + env(safe-area-inset-bottom));
+    }
+
+    .section { margin-bottom: 28px; }
+    .section-label {
+      font-size: 13px; color: #8e8e93; text-transform: uppercase;
+      letter-spacing: 0.4px; margin-bottom: 8px; padding: 0 4px;
+    }
+    .section-note { font-size: 13px; color: #8e8e93; margin-top: 8px; padding: 0 4px; line-height: 1.4; }
+
+    .card { background: #2c2c2e; border-radius: 12px; overflow: hidden; }
+
+    .row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 16px; min-height: 50px;
+    }
+    .row + .row { border-top: 1px solid #38383a; }
+
+    .row-label { flex: 1; font-size: 17px; }
+
+    .text-input {
+      flex: 1; background: none; border: none; outline: none;
+      color: #fff; font-size: 17px; min-width: 0;
+    }
+    .text-input::placeholder { color: #48484a; }
+
+    .select-input {
+      background: none; border: none; outline: none;
+      color: #8e8e93; font-size: 17px; cursor: pointer;
+      -webkit-appearance: none; appearance: none;
+    }
+    .select-input option { background: #2c2c2e; color: #fff; }
+
+    .toggle { position: relative; width: 51px; height: 31px; flex-shrink: 0; }
+    .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .toggle-track {
+      position: absolute; inset: 0; border-radius: 31px;
+      background: #39393d; cursor: pointer; transition: background .2s;
+    }
+    .toggle-thumb {
+      position: absolute; top: 2px; left: 2px;
+      width: 27px; height: 27px; border-radius: 50%;
+      background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,.35);
+      transition: transform .2s;
+    }
+    .toggle input:checked ~ .toggle-track { background: #34c759; }
+    .toggle input:checked ~ .toggle-thumb { transform: translateX(20px); }
+
+    .slider-col { flex-direction: column; align-items: stretch; gap: 8px; }
+    .slider-head { display: flex; justify-content: space-between; align-items: center; }
+    .slider-feet { display: flex; justify-content: space-between; }
+    .slider-feet span { font-size: 11px; color: #8e8e93; }
+    input[type="range"] { width: 100%; accent-color: #0a84ff; cursor: pointer; }
+
+    .big-btn {
+      width: 100%; padding: 14px; border-radius: 12px; border: none;
+      background: #0a84ff; color: #fff; font-size: 17px; font-weight: 600;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: opacity .15s;
+    }
+    .big-btn:disabled { background: #2c2c2e; color: #48484a; }
+    .big-btn:not(:disabled):active { opacity: .75; }
+
+    .status-msg { text-align: center; font-size: 14px; margin-top: 10px; min-height: 20px; }
+    .status-msg.ok { color: #34c759; }
+    .status-msg.err { color: #ff453a; }
+
+    .guide-step { display: flex; gap: 10px; align-items: flex-start; }
+    .step-num {
+      width: 22px; height: 22px; border-radius: 50%; background: #0a84ff;
+      font-size: 11px; font-weight: 700; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .step-text { font-size: 14px; color: rgba(235,235,245,.8); line-height: 1.4; }
+
+    .spinner {
+      width: 20px; height: 20px; border-radius: 50%;
+      border: 2.5px solid rgba(255,255,255,.3); border-top-color: #fff;
+      animation: spin .7s linear infinite; flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Slideshow ── */
+    #slideshow-screen { background: #000; position: relative; }
+
+    #photo-wrap {
+      position: absolute; inset: 0; overflow: hidden;
+      transform-origin: center center;
+    }
+    #photo-img {
+      width: 100%; height: 100%;
+      object-fit: cover; display: block;
+      user-select: none; -webkit-user-drag: none;
+    }
+    #photo-img.fit { object-fit: contain; }
+
+    #caption-bar {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      padding: 48px 20px 24px;
+      padding-bottom: calc(24px + env(safe-area-inset-bottom));
+      background: linear-gradient(transparent, rgba(0,0,0,.72));
+      font-size: 14px; font-weight: 500; line-height: 1.45;
+      display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+      overflow: hidden; pointer-events: none;
+    }
+    #caption-bar.off { display: none; }
+
+    #controls-layer {
+      position: absolute; inset: 0; display: flex; flex-direction: column;
+      transition: opacity .35s ease;
+    }
+    #controls-layer.hidden { opacity: 0; pointer-events: none; }
+
+    .ctrl-top {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      padding: 14px 16px; padding-top: calc(14px + env(safe-area-inset-top));
+      pointer-events: auto;
+    }
+    .counter-pill {
+      font-size: 13px; color: rgba(255,255,255,.85);
+      background: rgba(0,0,0,.52); padding: 5px 12px; border-radius: 20px;
+    }
+    .icon-group { display: flex; gap: 8px; }
+    .icon-btn {
+      width: 38px; height: 38px; border-radius: 50%;
+      background: rgba(0,0,0,.52); border: none; color: #fff;
+      font-size: 17px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+    .icon-btn:active { opacity: .7; }
+
+    .ctrl-spacer { flex: 1; }
+
+    .ctrl-bottom {
+      display: flex; align-items: center; justify-content: center; gap: 44px;
+      padding: 20px 40px; padding-bottom: calc(20px + env(safe-area-inset-bottom));
+      background: linear-gradient(transparent, rgba(0,0,0,.62));
+      pointer-events: auto;
+    }
+    .play-btn {
+      background: none; border: none; color: #fff;
+      font-size: 40px; cursor: pointer; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      width: 50px; height: 50px;
+    }
+    .skip-btn {
+      background: none; border: none; color: #fff;
+      font-size: 26px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .play-btn:active, .skip-btn:active { opacity: .6; }
+
+    #progress-bar {
+      position: absolute; bottom: 0; left: 0; right: 0; height: 2px;
+      background: rgba(255,255,255,.18); pointer-events: none;
+    }
+    #progress-fill {
+      height: 100%; background: rgba(255,255,255,.8);
+      transition: width .3s linear; width: 0%;
+    }
+
+    #loading-overlay {
+      position: absolute; inset: 0; background: #000;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 16px; z-index: 20;
+    }
+    #loading-overlay.gone { display: none; }
+    #loading-overlay p { color: #8e8e93; font-size: 15px; }
+    .big-spinner { width: 40px; height: 40px; border-width: 3.5px; }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════ SETTINGS ═══════════════════════════ -->
+<div id="settings-screen" class="screen active">
+  <div class="nav-bar">
+    <button class="btn-nav left" id="btn-cancel" onclick="cancelSettings()" style="visibility:hidden">İptal</button>
+    <span class="nav-title">InstaWallpaper</span>
+    <button class="btn-nav right" id="btn-start" onclick="startSlideshow()" disabled>Başlat</button>
+  </div>
+
+  <div class="scroll-body">
+
+    <!-- Instagram -->
+    <div class="section">
+      <div class="section-label">Instagram Hesabı</div>
+      <div class="card">
+        <div class="row">
+          <span style="color:#8e8e93;font-size:17px">@</span>
+          <input class="text-input" id="inp-username" type="text"
+            placeholder="kullanici_adi" autocorrect="off" autocapitalize="none" spellcheck="false">
+        </div>
+      </div>
+      <div class="section-note">Herkese açık (public) Instagram hesaplarını destekler.</div>
+    </div>
+
+    <!-- Load -->
+    <div class="section">
+      <button class="big-btn" id="btn-load" onclick="loadPhotos()" disabled>
+        <span id="load-icon">📷</span>
+        <span id="load-label">Fotoğrafları Yükle</span>
+      </button>
+      <div class="status-msg" id="load-status"></div>
+    </div>
+
+    <!-- Slideshow settings -->
+    <div class="section">
+      <div class="section-label">Slayt Gösterisi</div>
+      <div class="card">
+
+        <!-- Interval -->
+        <div class="row slider-col">
+          <div class="slider-head">
+            <span class="row-label">Geçiş Süresi</span>
+            <span id="lbl-interval" style="color:#8e8e93;font-size:17px;font-variant-numeric:tabular-nums">5 sn</span>
+          </div>
+          <input type="range" id="inp-interval" min="3" max="120" step="1" value="5" oninput="updateIntervalLabel()">
+          <div class="slider-feet"><span>3 sn</span><span>2 dk</span></div>
+        </div>
+
+        <!-- Transition -->
+        <div class="row">
+          <span class="row-label">Geçiş Efekti</span>
+          <select class="select-input" id="inp-transition">
+            <option value="fade">Solma</option>
+            <option value="slide">Kaydırma</option>
+            <option value="zoom">Yakınlaştırma</option>
+            <option value="flip">Çevirme</option>
+          </select>
+        </div>
+
+        <!-- Fit -->
+        <div class="row">
+          <span class="row-label">Fotoğraf Boyutu</span>
+          <select class="select-input" id="inp-fit">
+            <option value="cover">Doldur</option>
+            <option value="contain">Sığdır</option>
+          </select>
+        </div>
+
+        <!-- Shuffle -->
+        <div class="row">
+          <span class="row-label">Karıştır</span>
+          <label class="toggle">
+            <input type="checkbox" id="inp-shuffle">
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+
+        <!-- Caption -->
+        <div class="row">
+          <span class="row-label">Altyazıyı Göster</span>
+          <label class="toggle">
+            <input type="checkbox" id="inp-caption" checked>
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Guide -->
+    <div class="section">
+      <div class="section-label">Duvar Kağıdı Nasıl Ayarlanır?</div>
+      <div class="card">
+        <div class="row" style="flex-direction:column;gap:14px;align-items:stretch">
+          <div class="guide-step">
+            <div class="step-num">1</div>
+            <div class="step-text">Slayt gösterisinde istediğiniz fotoğrafa gelin</div>
+          </div>
+          <div class="guide-step">
+            <div class="step-num">2</div>
+            <div class="step-text">İndir (↓) butonuna basarak Fotoğraflar'a kaydedin</div>
+          </div>
+          <div class="guide-step">
+            <div class="step-num">3</div>
+            <div class="step-text">Ayarlar → Duvar Kağıdı'ndan fotoğrafı seçin</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════ SLIDESHOW ═══════════════════════════ -->
+<div id="slideshow-screen" class="screen">
+
+  <div id="loading-overlay">
+    <div class="spinner big-spinner"></div>
+    <p id="loading-msg">Fotoğraf yükleniyor...</p>
+  </div>
+
+  <div id="photo-wrap">
+    <img id="photo-img" src="" alt="" draggable="false">
+  </div>
+
+  <div id="caption-bar"></div>
+
+  <div id="controls-layer" onclick="handleControlsTap(event)">
+    <div class="ctrl-top">
+      <span class="counter-pill" id="counter">1 / 1</span>
+      <div class="icon-group">
+        <button class="icon-btn" id="btn-save" onclick="saveCurrentPhoto(event)" title="İndir">↓</button>
+        <button class="icon-btn" onclick="goToSettings(event)" title="Ayarlar">⚙</button>
+      </div>
+    </div>
+    <div class="ctrl-spacer"></div>
+    <div class="ctrl-bottom">
+      <button class="skip-btn" onclick="navigate(-1, event)">⏮</button>
+      <button class="play-btn" id="btn-play" onclick="togglePlay(event)">⏸</button>
+      <button class="skip-btn" onclick="navigate(1, event)">⏭</button>
+    </div>
+  </div>
+
+  <div id="progress-bar"><div id="progress-fill"></div></div>
+</div>
+
+<script>
+'use strict';
+
+// ─── State ────────────────────────────────────────────────────────────────
+let photos = [];
+let idx = 0;
+let playing = true;
+let transitioning = false;
+let slideTimer = null;
+let hideTimer = null;
+
+// ─── Settings helpers ─────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+
+function getSettings() {
+  return {
+    username:   $('inp-username').value.trim().replace(/^@/, ''),
+    interval:   parseInt($('inp-interval').value),
+    transition: $('inp-transition').value,
+    fit:        $('inp-fit').value,
+    shuffle:    $('inp-shuffle').checked,
+    caption:    $('inp-caption').checked,
+  };
+}
+
+function applySettings(s) {
+  if (!s) return;
+  $('inp-username').value   = s.username   || '';
+  $('inp-interval').value   = s.interval   || 5;
+  $('inp-transition').value = s.transition || 'fade';
+  $('inp-fit').value        = s.fit        || 'cover';
+  $('inp-shuffle').checked  = !!s.shuffle;
+  $('inp-caption').checked  = s.caption !== false;
+  updateIntervalLabel();
+}
+
+function updateIntervalLabel() {
+  const v = parseInt($('inp-interval').value);
+  const min = Math.floor(v / 60), sec = v % 60;
+  $('lbl-interval').textContent = v < 60 ? `${v} sn` : (sec === 0 ? `${min} dk` : `${min}dk ${sec}sn`);
+}
+
+function onUsernameInput() {
+  const ok = !!$('inp-username').value.trim();
+  $('btn-load').disabled = !ok;
+}
+
+// ─── Load photos ─────────────────────────────────────────────────────────
+async function loadPhotos() {
+  const s = getSettings();
+  if (!s.username) return;
+
+  setLoadUI(true);
+  $('load-status').textContent = '';
+  $('load-status').className = 'status-msg';
+
+  try {
+    const fetched = await fetchFromPicuki(s.username);
+    if (!fetched.length) throw new Error('Fotoğraf bulunamadı — hesap gizli olabilir.');
+
+    photos = s.shuffle ? shuffle(fetched) : fetched;
+    setLoadUI(false, `✅ ${photos.length} fotoğraf yüklendi!`, true);
+    $('btn-start').disabled = false;
+    localStorage.setItem('iw_photos_cached', s.username);
+  } catch (err) {
+    setLoadUI(false, `❌ ${err.message}`, false);
+  }
+}
+
+function setLoadUI(loading, msg, ok) {
+  $('btn-load').disabled = loading || !$('inp-username').value.trim();
+  $('btn-load').innerHTML = loading
+    ? '<div class="spinner"></div><span>Yükleniyor...</span>'
+    : '<span>📷</span><span>Fotoğrafları Yükle</span>';
+  if (msg) {
+    $('load-status').textContent = msg;
+    $('load-status').className = 'status-msg ' + (ok ? 'ok' : 'err');
+  }
+}
+
+// ─── Instagram via Picuki (CORS proxy) ───────────────────────────────────
+async function fetchFromPicuki(username) {
+  const target = `https://www.picuki.com/profile/${encodeURIComponent(username)}`;
+  const proxy  = `https://api.allorigins.win/get?url=${encodeURIComponent(target)}`;
+
+  const res = await fetch(proxy, { cache: 'no-store' });
+  if (!res.ok) throw new Error('Ağ hatası — internet bağlantınızı kontrol edin.');
+
+  const json = await res.json();
+  const html = json.contents || '';
+  if (!html) throw new Error('Sayfa içeriği alınamadı.');
+
+  return parsePicuki(html);
+}
+
+function parsePicuki(html) {
+  const items = [];
+  const seen  = new Set();
+
+  // img src and data-src with class post-image
+  const re = /<img[^>]+class="[^"]*post-image[^"]*"[^>]*>/gi;
+  let m;
+  while ((m = re.exec(html)) !== null) {
+    const tag = m[0];
+    const url = (tag.match(/\ssrc="([^"]+)"/) || tag.match(/\sdata-src="([^"]+)"/) || [])[1];
+    if (url && url.startsWith('http') && !url.includes('s150x150') && !seen.has(url)) {
+      seen.add(url);
+      items.push({ imageURL: url, caption: null });
+    }
+  }
+
+  // captions
+  const capRe = /<div[^>]+class="[^"]*photo-description[^"]*"[^>]*>([\s\S]*?)<\/div>/gi;
+  let ci = 0;
+  while ((m = capRe.exec(html)) !== null && ci < items.length) {
+    const text = m[1].replace(/<[^>]+>/g, '').trim();
+    if (text) items[ci].caption = text;
+    ci++;
+  }
+
+  return items;
+}
+
+// ─── Navigation ───────────────────────────────────────────────────────────
+function startSlideshow() {
+  const s = getSettings();
+  if (!photos.length) return;
+  localStorage.setItem('iw_settings', JSON.stringify(s));
+
+  idx = 0;
+  playing = true;
+
+  const img = $('photo-img');
+  img.className = s.fit === 'contain' ? 'fit' : '';
+
+  showScreen('slideshow-screen');
+  $('loading-overlay').classList.remove('gone');
+  showPhoto(idx);
+  startTimer();
+  scheduleHide();
+}
+
+function showPhoto(i) {
+  const s = getSettings();
+  const p = photos[i];
+  if (!p) return;
+
+  $('loading-overlay').classList.remove('gone');
+  $('loading-msg').textContent = 'Fotoğraf yükleniyor...';
+
+  $('photo-img').src = p.imageURL;
+  $('counter').textContent = `${i + 1} / ${photos.length}`;
+  $('progress-fill').style.width = `${(i + 1) / photos.length * 100}%`;
+  $('btn-play').textContent = playing ? '⏸' : '▶';
+
+  const cap = $('caption-bar');
+  if (s.caption && p.caption) {
+    cap.textContent = p.caption;
+    cap.classList.remove('off');
+  } else {
+    cap.classList.add('off');
+  }
+}
+
+function startTimer() {
+  stopTimer();
+  if (!playing) return;
+  const ms = parseInt($('inp-interval').value) * 1000;
+  slideTimer = setInterval(advance, ms);
+}
+
+function stopTimer() {
+  if (slideTimer) { clearInterval(slideTimer); slideTimer = null; }
+}
+
+function advance() {
+  transitionTo((idx + 1) % photos.length);
+}
+
+function navigate(dir, e) {
+  e && e.stopPropagation();
+  transitionTo((idx + dir + photos.length) % photos.length);
+  if (playing) startTimer();
+}
+
+function togglePlay(e) {
+  e && e.stopPropagation();
+  playing = !playing;
+  $('btn-play').textContent = playing ? '⏸' : '▶';
+  playing ? startTimer() : stopTimer();
+}
+
+// ─── Transitions ──────────────────────────────────────────────────────────
+function transitionTo(next) {
+  if (transitioning || next === idx) return;
+  transitioning = true;
+
+  const wrap = $('photo-wrap');
+  const tr   = $('inp-transition').value;
+
+  const done = () => { transitioning = false; };
+
+  const applyNext = () => {
+    idx = next;
+    showPhoto(idx);
+  };
+
+  switch (tr) {
+    case 'fade':
+      wrap.style.transition = 'opacity .5s ease-in-out';
+      wrap.style.opacity = '0';
+      setTimeout(() => {
+        applyNext();
+        wrap.style.opacity = '1';
+        setTimeout(done, 500);
+      }, 500);
+      break;
+
+    case 'slide': {
+      const dir = next > idx ? -1 : 1;
+      wrap.style.transition = 'transform .4s ease-in-out, opacity .4s ease-in-out';
+      wrap.style.transform  = `translateX(${dir * -100}%)`;
+      wrap.style.opacity    = '0';
+      setTimeout(() => {
+        wrap.style.transition = 'none';
+        wrap.style.transform  = `translateX(${dir * 100}%)`;
+        applyNext();
+        requestAnimationFrame(() => {
+          wrap.style.transition = 'transform .4s ease-in-out, opacity .4s ease-in-out';
+          wrap.style.transform  = 'translateX(0)';
+          wrap.style.opacity    = '1';
+          setTimeout(done, 400);
+        });
+      }, 400);
+      break;
+    }
+
+    case 'zoom':
+      wrap.style.transition = 'transform .3s ease-in, opacity .3s ease-in';
+      wrap.style.transform  = 'scale(1.15)';
+      wrap.style.opacity    = '0';
+      setTimeout(() => {
+        wrap.style.transition = 'none';
+        wrap.style.transform  = 'scale(0.88)';
+        applyNext();
+        requestAnimationFrame(() => {
+          wrap.style.transition = 'transform .3s ease-out, opacity .3s ease-out';
+          wrap.style.transform  = 'scale(1)';
+          wrap.style.opacity    = '1';
+          setTimeout(done, 300);
+        });
+      }, 300);
+      break;
+
+    case 'flip':
+      wrap.style.transition = 'transform .25s ease-in-out, opacity .25s ease-in-out';
+      wrap.style.transform  = 'scale(0.94)';
+      wrap.style.opacity    = '0';
+      setTimeout(() => {
+        applyNext();
+        wrap.style.transition = 'transform .25s ease-in-out, opacity .25s ease-in-out';
+        wrap.style.transform  = 'scale(1)';
+        wrap.style.opacity    = '1';
+        setTimeout(done, 250);
+      }, 250);
+      break;
+
+    default:
+      applyNext();
+      done();
+  }
+}
+
+// ─── Controls overlay ─────────────────────────────────────────────────────
+function handleControlsTap(e) {
+  const layer = $('controls-layer');
+  if (layer.classList.contains('hidden')) {
+    layer.classList.remove('hidden');
+    scheduleHide();
+  } else {
+    // Only hide if tapped on background (not a button)
+    if (e.target === layer || e.target.classList.contains('ctrl-spacer')) {
+      layer.classList.add('hidden');
+    } else {
+      scheduleHide();
+    }
+  }
+}
+
+function scheduleHide() {
+  if (hideTimer) clearTimeout(hideTimer);
+  hideTimer = setTimeout(() => $('controls-layer').classList.add('hidden'), 3000);
+}
+
+// ─── Settings screen ──────────────────────────────────────────────────────
+function goToSettings(e) {
+  e && e.stopPropagation();
+  stopTimer();
+  $('btn-cancel').style.visibility = 'visible';
+  showScreen('settings-screen');
+}
+
+function cancelSettings() {
+  showScreen('slideshow-screen');
+  if (playing) startTimer();
+}
+
+// ─── Save photo ───────────────────────────────────────────────────────────
+async function saveCurrentPhoto(e) {
+  e && e.stopPropagation();
+  const p = photos[idx];
+  if (!p) return;
+
+  const btn = $('btn-save');
+  btn.innerHTML = '<div class="spinner" style="width:18px;height:18px;border-width:2px"></div>';
+  btn.disabled = true;
+
+  try {
+    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(p.imageURL)}`;
+    const res  = await fetch(proxyUrl);
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href     = url;
+    a.download = `wallpaper_${idx + 1}.jpg`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch {
+    // Fallback: open in new tab (user can long-press to save)
+    window.open(p.imageURL, '_blank');
+  } finally {
+    btn.textContent = '↓';
+    btn.disabled = false;
+  }
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  $(id).classList.add('active');
+}
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// ─── Image load ───────────────────────────────────────────────────────────
+$('photo-img').addEventListener('load', () => $('loading-overlay').classList.add('gone'));
+$('photo-img').addEventListener('error', () => {
+  $('loading-msg').textContent = 'Fotoğraf yüklenemedi';
+  setTimeout(() => {
+    $('loading-overlay').classList.add('gone');
+    if (playing) advance();
+  }, 1200);
+});
+
+// ─── Input listeners ──────────────────────────────────────────────────────
+$('inp-username').addEventListener('input', onUsernameInput);
+
+// ─── Boot ─────────────────────────────────────────────────────────────────
+(function init() {
+  const saved = JSON.parse(localStorage.getItem('iw_settings') || 'null');
+  applySettings(saved);
+  onUsernameInput();
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
+})();
+</script>
+</body>
+</html>
