@@ -14,9 +14,15 @@ internal static class Prompts
 
         Kurallar:
         - TÜM çıktı Türkçe olmalı. Kaynak metinler İngilizce olabilir; başlık dâhil
-          her alanı akıcı Türkçeye çevir. Teknik özel adları OLDUĞU GİBİ bırak:
-          ürün/şirket adları (GPT-6, .NET, Angular), API adları, sürüm numaraları,
-          kod terimleri. Bunları Türkçeye çevirme, sadece cümleyi Türkçe kur.
+          her alanı akıcı Türkçeye çevir.
+        - Yalnızca ÖZEL ADLAR ve tanımlayıcılar olduğu gibi kalır: ürün/şirket adları
+          (GPT-6, .NET, Angular, SkillOpt), API ve sınıf adları, sürüm numaraları,
+          dosya/komut adları.
+        - Yaygın teknik terimler ÇEVRİLİR; özel ad değildirler:
+          "model weights" → "model ağırlıkları", "fine-tuning" → "ince ayar",
+          "prompt" → "istem", "inference" → "çıkarım", "training" → "eğitim".
+          Başlıkta İngilizce kelime bırakma; "Model Weights Olmadan" gibi yarı
+          çevrilmiş ifadeler kabul edilmez.
         - Clickbait yok. Abartı yok. "Devrim", "çığır açan", "her şeyi değiştirecek" gibi ifadeler kullanma.
         - Sadece verilen kaynaklardaki bilgiye dayan. Emin olmadığın hiçbir şeyi yazma.
         - Somut ol: sürüm numarası, API adı, benchmark varsa yaz.

@@ -54,6 +54,25 @@ type Op =
   | { kind: 'rule'; y: number }
   | { kind: 'bar'; x: number; y: number; w: number; fill: string };
 
+/**
+ * Shortens a string until it fits, marking the cut. Used for the footer URL,
+ * which is right-aligned next to a left-aligned label: a long slug otherwise
+ * runs straight through the label and off both edges of the image.
+ */
+function fit(ctx: CanvasRenderingContext2D, text: string, font: string, maxWidth: number): string {
+  ctx.font = font;
+  if (ctx.measureText(text).width <= maxWidth) {
+    return text;
+  }
+
+  let cut = text;
+  while (cut.length > 1 && ctx.measureText(`${cut}…`).width > maxWidth) {
+    cut = cut.slice(0, -1);
+  }
+
+  return `${cut}…`;
+}
+
 function formatDate(iso: string): string {
   const date = new Date(iso);
   return Number.isNaN(date.getTime())
@@ -300,8 +319,19 @@ export async function renderShareImage(story: StoryDetail, appUrl: string): Prom
     text('Devamı uygulamada — bu görsele sığmadı.', `24px ${SANS}`, CAUTION);
     y += 44;
   }
-  text('focus-ai', `24px ${MONO}`, FAINT);
-  text(`${appUrl}/story/${story.slug}`.replace(/^https?:\/\//, ''), `24px ${MONO}`, FAINT, W - PAD, 'right');
+  const footerFont = `24px ${MONO}`;
+  const brand = 'focus-ai';
+  plan.font = footerFont;
+  const urlSpace = W - PAD * 2 - plan.measureText(brand).width - 40;
+
+  text(brand, footerFont, FAINT);
+  text(
+    fit(plan, `${appUrl}/story/${story.slug}`.replace(/^https?:\/\//, ''), footerFont, urlSpace),
+    footerFont,
+    FAINT,
+    W - PAD,
+    'right',
+  );
 
   // ── paint ─────────────────────────────────────────────────────────────────
   const canvas = document.createElement('canvas');
