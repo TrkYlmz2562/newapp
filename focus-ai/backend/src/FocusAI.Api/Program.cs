@@ -76,8 +76,17 @@ builder.Services.AddAuthorizationBuilder()
 
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
 {
-    var origins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>()
-                  ?? ["http://localhost:3000"];
+    // Empty entries are filtered: optional origins (e.g. a LAN address for phone
+    // access) are wired through env vars that may be unset, which would otherwise
+    // leave a blank "" origin that matches nothing and can throw.
+    var origins = (builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? [])
+        .Where(origin => !string.IsNullOrWhiteSpace(origin))
+        .ToArray();
+
+    if (origins.Length == 0)
+    {
+        origins = ["http://localhost:3000"];
+    }
 
     policy.WithOrigins(origins)
         .AllowAnyHeader()

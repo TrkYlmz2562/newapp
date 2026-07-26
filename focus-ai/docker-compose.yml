@@ -72,6 +72,9 @@ services:
       # refuses to start rather than issuing forgeable tokens.
       Jwt__SigningKey: ${JWT_SIGNING_KEY:-focus-ai-local-development-signing-key-change-me-32b}
       Cors__Origins__0: http://localhost:3000
+      # Telefondan/LAN'dan erişim için PC'nin adresini .env'de ver:
+      #   EXTRA_CORS_ORIGIN=http://192.168.1.50:3000
+      Cors__Origins__1: ${EXTRA_CORS_ORIGIN:-}
       Search__Url: http://meilisearch:7700
       Search__ApiKey: ${MEILI_MASTER_KEY:-focusai-dev-master-key}
       Ingestion__EnableBackgroundJobs: 'true'
