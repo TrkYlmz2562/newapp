@@ -232,8 +232,15 @@
     color: color-mix(in srgb, var(--accent-dark) 50%, transparent);
   }
 
+  /*
+   * Body copy. 17px, not the 14.5px it used to inherit: this is read in bed at
+   * arm's length, and a Turkish sentence is longer than the English one it
+   * translates, so it wants the measure. hyphens on body only — never on a
+   * headline, where a mid-word break reads as a typo.
+   */
   .prose-reader p {
-    @apply mb-3 leading-relaxed text-ink-700 dark:text-ink-300;
+    @apply mb-4 font-serif text-[17px] leading-[1.62] text-ink-700 dark:text-ink-200;
+    hyphens: auto;
   }
 
   /*

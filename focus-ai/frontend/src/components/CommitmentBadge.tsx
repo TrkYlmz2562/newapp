@@ -53,7 +53,7 @@ export function CommitmentPanel({ commitment }: { commitment: Commitment }) {
         <p className="font-serif leading-relaxed text-ink-800 dark:text-ink-100">{commitment.event}</p>
       )}
 
-      <dl className="mt-3 space-y-1.5 font-mono text-[11.5px] text-ink-500 dark:text-ink-400">
+      <dl className="mt-3 space-y-1.5 font-sans text-[11.5px] text-ink-500 dark:text-ink-400">
         {commitment.dateText && (
           <div className="flex gap-2">
             <dt className="w-20 shrink-0">tarih</dt>

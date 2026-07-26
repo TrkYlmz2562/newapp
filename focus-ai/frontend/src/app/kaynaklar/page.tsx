@@ -161,7 +161,7 @@ export default function SourcesPage() {
         </p>
       </header>
 
-      <div className="flex flex-wrap gap-2 font-mono text-[11px]">
+      <div className="flex flex-wrap gap-2 font-sans text-[11px]">
         {(
           [
             ['Failing', report.failingCount],
@@ -179,13 +179,13 @@ export default function SourcesPage() {
       </div>
 
       {problems === 0 && (
-        <p className="rounded-lg border-l-2 border-signal-trust bg-signal-trust/5 p-3 text-sm text-ink-700 dark:text-ink-200">
+        <p className="border-l-2 border-signal-trust bg-signal-trust/5 p-3 text-sm text-ink-700 dark:text-ink-200">
           Tüm kaynaklar çalışıyor ve içerik üretiyor.
         </p>
       )}
 
       {error && (
-        <p className="rounded-lg bg-signal-hype/10 p-3 text-sm text-signal-hype">{error}</p>
+        <p className="bg-signal-hype/10 p-3 text-sm text-signal-hype">{error}</p>
       )}
 
       <ul className="space-y-2">
@@ -213,7 +213,7 @@ export default function SourcesPage() {
                     </a>
                     <span className={`chip text-[10.5px] ${tone.chip}`}>{tone.label}</span>
                     {source.isOfficial && (
-                      <span className="font-mono text-[10.5px] text-emerald-600 dark:text-emerald-400">
+                      <span className="font-sans text-[10.5px] text-emerald-600 dark:text-emerald-400">
                         resmi
                       </span>
                     )}
@@ -225,7 +225,7 @@ export default function SourcesPage() {
                     {source.reason}
                   </p>
 
-                  <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 font-mono text-[11px] text-ink-500 dark:text-ink-400">
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 font-sans text-[11px] text-ink-500 dark:text-ink-400">
                     <span>{CATEGORY_LABEL[source.category] ?? source.category}</span>
                     <span>·</span>
                     <span>{source.language === 'tr' ? 'Türkçe' : source.language.toUpperCase()}</span>
@@ -259,7 +259,7 @@ export default function SourcesPage() {
                           : `${source.name} kaynağını takip et`
                       }
                       title={source.isFavorite ? 'Takibi bırak' : 'Takip et'}
-                      className={`tap-row rounded-lg p-1.5 transition hover:bg-ink-100 disabled:opacity-50 dark:hover:bg-ink-800 ${
+                      className={`tap-row p-1.5 transition hover:bg-ink-100 disabled:opacity-50 dark:hover:bg-ink-800 ${
                         source.isFavorite ? 'text-focus-600 dark:text-focus-400' : 'text-ink-400 dark:text-ink-500'
                       }`}
                     >
@@ -288,7 +288,7 @@ export default function SourcesPage() {
                         source.isEnabled ? `${source.name} kaynağını kapat` : `${source.name} kaynağını aç`
                       }
                       title={source.isEnabled ? 'Kaynağı kapat' : 'Kaynağı aç'}
-                      className="tap-row rounded-lg p-1.5 text-ink-400 transition hover:bg-ink-100 disabled:opacity-50 dark:text-ink-500 dark:hover:bg-ink-800"
+                      className="tap-row p-1.5 text-ink-400 transition hover:bg-ink-100 disabled:opacity-50 dark:text-ink-500 dark:hover:bg-ink-800"
                     >
                       <svg
                         className="h-4 w-4"

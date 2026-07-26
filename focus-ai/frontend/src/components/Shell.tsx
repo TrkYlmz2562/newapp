@@ -126,7 +126,7 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
   return (
     <div
       role="alert"
-      className="mx-4 rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-800
+      className="mx-4 border border-rose-200 bg-rose-50 p-5 text-sm text-rose-800
                  dark:border-rose-900 dark:bg-rose-950/50 dark:text-rose-200 sm:mx-5"
     >
       <p className="font-medium">{message}</p>

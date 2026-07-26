@@ -72,7 +72,7 @@ export function ShareButton({ story }: { story: StoryDetail }) {
       disabled={state === 'working'}
       aria-label={label}
       title={label}
-      className={`tap-44 rounded-lg p-2 transition hover:bg-ink-100 disabled:opacity-60 dark:hover:bg-ink-800 ${
+      className={`tap-44 p-2 transition hover:bg-ink-100 disabled:opacity-60 dark:hover:bg-ink-800 ${
         state === 'error' ? 'text-signal-hype' : 'text-ink-500 dark:text-ink-400'
       }`}
     >

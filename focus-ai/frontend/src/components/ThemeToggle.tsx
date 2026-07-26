@@ -79,7 +79,7 @@ export function ThemeToggle() {
     <div
       role="radiogroup"
       aria-label="Tema"
-      className="inline-flex rounded-xl border border-ink-200 bg-transparent p-0.5 dark:border-ink-700 dark:bg-ink-900"
+      className="inline-flex border border-ink-200 bg-transparent p-0.5 dark:border-ink-700 dark:bg-ink-900"
     >
       {OPTIONS.map((option) => {
         // Before the stored value is read every option would render unselected,
@@ -93,7 +93,7 @@ export function ThemeToggle() {
             role="radio"
             aria-checked={active}
             onClick={() => choose(option.value)}
-            className={`tap-44 rounded-lg px-3 py-2.5 text-xs font-semibold transition ${
+            className={`tap-44 px-3 py-2.5 text-xs font-semibold transition ${
               active
                 ? 'bg-ink-900 text-white dark:bg-ink-100 dark:text-ink-900'
                 : 'text-ink-600 hover:bg-ink-100 dark:text-ink-300 dark:hover:bg-ink-800'

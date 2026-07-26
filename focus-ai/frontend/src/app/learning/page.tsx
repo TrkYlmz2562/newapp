@@ -116,7 +116,7 @@ export default function LearningPage() {
                       href={resource.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 rounded-lg p-2 text-sm text-focus-700 transition
+                      className="flex items-center gap-2 p-2 text-sm text-focus-700 transition
                                  hover:bg-ink-50 dark:text-focus-300 dark:hover:bg-ink-800"
                     >
                       <span aria-hidden="true">{KIND_ICONS[resource.kind] ?? '🔗'}</span>
