@@ -57,10 +57,13 @@ services:
       retries: 5
 
   # Kendi bilgisayarında çalışan çeviri modeli. VARSAYILAN OLARAK KAPALI —
-  # ~2 GB RAM ve ilk açılışta ~1,1 GB'lık bir indirme demek. Açmak için:
+  # ~3 GB RAM ve ilk açılışta 2,5 GB'lık bir indirme demek. Açmak için:
   #
   #   docker compose --profile translate up -d
   #   # ve .env içine:  TRANSLATION_ENABLED=true
+  #
+  # Hazır olduğunu şöyle görürsün (model yüklenmesi birkaç dakika sürer):
+  #   curl http://localhost:8081/health
   #
   # Ne işe yarıyor: LLM yapılandırılmadığında (ya da Gemini düştüğünde) boru
   # hattı, makalenin kendi cümlelerini çıkarıp yayınlıyor. İngilizce bir kaynakta
@@ -68,20 +71,26 @@ services:
   # LLM özet katmanının yerine GEÇMEZ: özet yazmak editöryal bir iş, Türkçe onun
   # yan ürünü — çevirmen bunların hiçbirini yapamaz.
   #
-  # Neden bu model: LibreTranslate'in en-tr motoru Kasım 2021 tarihli ~65M
-  # parametrelik bir Argos paketi ve ölçtüğümüzde "React 20 ships" ifadesini
-  # "20 gemi", "bug" kelimesini "boğa" diye çeviriyor. Teknoloji haberinde bu,
-  # İngilizce bırakmaktan kötü. Hy-MT2 (Apache-2.0) ürün adlarını, sürüm
-  # numaralarını ve CVE kimliklerini olduğu gibi koruyor.
+  # Neden hazır bir çeviri motoru değil: LibreTranslate'in en-tr modeli Kasım 2021
+  # tarihli ~65M parametrelik bir Argos paketi ve indekste daha yenisi yok.
+  # "React 20 ships a new compiler" → "20 gemi yeni bir derleyici", "fixes a bug"
+  # → "bir boğa düzeltiyor". Teknoloji haberinde bunu yayınlamak İngilizce
+  # bırakmaktan kötü. NLLB-200 de eleniyor: her boyutu CC-BY-NC.
   #
-  # 32 GB RAM veya >=6 GB VRAM'li bir GPU varsa Hy-MT2-7B'ye geçmek belirgin bir
-  # kalite sıçraması; tek değişen aşağıdaki dosya adı.
+  # Neden bu model: metin-only, "düşünme" modu yok (Qwen3'ün thinking sürümleri
+  # yanıta <think> blokları koyuyor ve TranslationGuard bunları haklı olarak
+  # reddederdi), system prompt'a uyuyor — kimliklerin korunmasını sağlayan şey o
+  # prompt — ve Türkçe destekli 119 dilden biri.
+  #
+  # Kalite yükseltmesi (RAM varsa): Hunyuan-MT-7B, çeviri için özel eğitilmiş bir
+  # model. Tek değişen aşağıdaki depo adı:
+  #   TRANSLATION_MODEL_REPO=Mungert/Hunyuan-MT-7B-GGUF:q4_k_m     # 4,7 GB
   translator:
     profiles: ['translate']
     image: ghcr.io/ggml-org/llama.cpp:server
     command:
       - '-hf'
-      - '${TRANSLATION_MODEL_REPO:-tencent/Hunyuan-MT2-1.8B-GGUF:Q4_K_M}'
+      - '${TRANSLATION_MODEL_REPO:-unsloth/Qwen3-4B-Instruct-2507-GGUF:Q4_K_M}'
       - '--host'
       - '0.0.0.0'
       - '--port'
@@ -93,17 +102,14 @@ services:
       - '--parallel'
       - '1'
     volumes:
-      # Model önbelleği. Bu olmadan her yeniden başlatma ~1,1 GB indiriyor.
+      # Model önbelleği. Bu olmadan her yeniden başlatma 2,5 GB indiriyor.
       - translator-models:/root/.cache/llama.cpp
     ports:
       - '8081:8080'
-    healthcheck:
-      test: ['CMD-SHELL', 'curl -fsS http://localhost:8080/health || exit 1']
-      # İlk açılış modeli indirip yüklüyor; start_period bu yüzden uzun.
-      start_period: 600s
-      interval: 30s
-      timeout: 10s
-      retries: 5
+    # Healthcheck bilerek yok: imajda curl olup olmadığı doğrulanmadı ve yanlış
+    # bir healthcheck çalışan konteyneri "unhealthy" gösterir — hiç olmamasından
+    # kötü. Buna depends_on ile bağlı bir şey de yok; çevirmen kapalıyken API
+    # zaten kaynak dilinde yayınlamaya devam ediyor.
     restart: unless-stopped
 
   api:

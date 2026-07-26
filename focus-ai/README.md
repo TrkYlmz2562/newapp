@@ -126,8 +126,9 @@ Türkçeleştirir; ayrıca LLM yolunda modelin başlık ya da spot döndürmedi�
 durumlarda kaynak metne düşen alanları da kapsar.
 
 ```bash
-docker compose --profile translate up -d      # ~1,1 GB indirir, ~2 GB RAM
+docker compose --profile translate up -d      # 2,5 GB indirir, ~3 GB RAM
 # .env:  TRANSLATION_ENABLED=true
+curl http://localhost:8081/health              # model yüklenmesi birkaç dakika
 ```
 
 **LLM özet katmanının yerine geçmez.** Özet yazmak editöryal bir iştir — neyin
@@ -143,10 +144,18 @@ bırakmaktan kötüdür: okur İngilizce bir cümlenin etrafından dolaşabilir,
 kaynağın söylemediği bir şeyi söyleyen Türkçe cümlenin etrafından dolaşamaz.
 NLLB-200 de eleniyor — her boyutu CC-BY-**NC**, ticari kullanıma kapalı.
 
-Varsayılan model Tencent **Hy-MT2-1.8B** (Apache-2.0); ürün adlarını, sürüm
-numaralarını ve CVE kimliklerini olduğu gibi koruyor. 32 GB RAM ya da ≥6 GB
-VRAM'li bir GPU varsa `TRANSLATION_MODEL_REPO` ile 7B sürümüne geçmek belirgin
-bir kalite sıçraması.
+Varsayılan model **Qwen3-4B-Instruct-2507** (Q4_K_M, 2,5 GB): metin-only,
+"düşünme" modu yok — thinking sürümleri yanıta `<think>` blokları koyar ve
+`TranslationGuard` bunları haklı olarak reddeder — system prompt'a uyuyor
+(kimliklerin korunmasını sağlayan şey o prompt) ve Türkçe destekli 119 dilden
+biri. RAM varsa `TRANSLATION_MODEL_REPO=Mungert/Hunyuan-MT-7B-GGUF:q4_k_m`
+(4,7 GB) çeviri için özel eğitilmiş bir modele geçirir.
+
+> Model seçimi ölçüme değil, doğrulanmış kısıtlara dayanıyor: bu makinede model
+> çalıştırıp karşılaştırma yapılmadı. Kabul edilebilir olmasının sebebi
+> `TranslationGuard` — kötü çıktı yayınlanmıyor, reddediliyor. Bir modelin bu
+> iş için iyi olup olmadığını, açtıktan sonra günlüklerdeki reddedilme oranına
+> bakarak görürsün.
 
 Her aday çeviri `TranslationGuard`'dan geçer ve **kapalı devre başarısız olur**:
 sürüm numarası, ürün adı ya da CVE kimliği kaybolmuşsa, uzunluk oranı çökmüş ya

@@ -71,8 +71,13 @@ public sealed class TranslationOptions
 
     public string ApiKey { get; set; } = string.Empty;
 
-    /// <summary>llama.cpp ignores this and serves whatever it loaded; it is sent for logs.</summary>
-    public string Model { get; set; } = "hy-mt2-1.8b";
+    /// <summary>
+    /// llama.cpp serves whatever model it was started with and ignores this, so it
+    /// is a label rather than a selector — the actual model is chosen by the
+    /// container's <c>-hf</c> argument. Kept because an OpenAI-compatible backend
+    /// that does route on it (vLLM, LM Studio) needs one.
+    /// </summary>
+    public string Model { get; set; } = "local-translator";
 
     /// <summary>
     /// Generous by design. A 1.8B model on CPU runs at roughly 11 tokens/second,
