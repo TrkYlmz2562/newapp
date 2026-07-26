@@ -3,10 +3,10 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/components/AuthProvider';
-import { PageHeader, SearchBar, EmptyState, ErrorState } from '@/components/Shell';
+import { Masthead, EmptyState, ErrorState } from '@/components/Shell';
 import { StoryCard, StoryCardSkeleton } from '@/components/StoryCard';
 import { api } from '@/lib/api';
-import { CATEGORY_EMOJI, CATEGORY_LABELS, formatDayHeading, readingTime } from '@/lib/format';
+import { CATEGORY_LABELS, formatDayHeading, readingTime, trUpper } from '@/lib/format';
 import type { ContentCategory, Digest, StoryCard as Story } from '@/lib/types';
 
 /** The category shortcuts from PRD section 7. */
@@ -59,74 +59,81 @@ export default function HomePage() {
   const rest = digest?.items.slice(1) ?? [];
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title={user ? `Merhaba, ${user.displayName.split(' ')[0]}` : 'Focus AI'}
-        subtitle={
+    <div>
+      <Masthead
+        dateLine={digest ? formatDayHeading(digest.date) : 'Bugün'}
+        note={
           digest
-            ? `${formatDayHeading(digest.date)} · ${readingTime(digest.readingMinutes)}`
-            : 'Günün bilmen gereken teknoloji gelişmeleri'
+            ? `${digest.items.length} haber · ${readingTime(digest.readingMinutes)}`
+            : undefined
         }
       />
 
-      <SearchBar />
+      {/*
+        The section index, straight off a front page: a single ruled strip of
+        section names. It replaces a row of bordered pill chips that each carried
+        an emoji and 12px of padding — 36px of height for a navigation the reader
+        uses once a session, on the screen the audit found had no room for a
+        story. Rules cost 1px.
+      */}
+      <nav
+        aria-label="Bölümler"
+        className="chip-row border-b border-ink-300 px-[18px] pb-2 font-sans text-[10.5px] font-semibold tracking-[0.1em] text-ink-500 dark:border-ink-800 dark:text-ink-400"
+        style={{ fontVariationSettings: "'wdth' 78" }}
+      >
+        {SHORTCUTS.map(({ category, href }) => (
+          <Link key={category} href={href} className="shrink-0 py-1 hover:text-focus-600 dark:hover:text-focus-300">
+            {trUpper(CATEGORY_LABELS[category])}
+          </Link>
+        ))}
+        <Link href="/trends" className="shrink-0 py-1 hover:text-focus-600 dark:hover:text-focus-300">
+          {trUpper('Trendler')}
+        </Link>
+        <Link href="/search" className="shrink-0 py-1 text-focus-600 dark:text-focus-300">
+          {trUpper('Ara')}
+        </Link>
+      </nav>
 
       {digest?.intro && (
-        <p className="mx-4 border-l-2 border-focus-600 bg-ink-100 p-4 text-sm leading-relaxed text-ink-700 shadow-sm dark:bg-ink-900 dark:text-ink-200 sm:mx-5">
+        <p className="px-[18px] font-serif text-[17px] italic leading-[1.5] text-ink-600 dark:text-ink-300">
           {digest.intro}
         </p>
       )}
 
-      <nav aria-label="Kategoriler" className="chip-row px-4 pb-1 sm:px-5">
-        {SHORTCUTS.map(({ category, href }) => (
-          <Link
-            key={category}
-            href={href}
-            className="chip shrink-0 border border-ink-300 bg-transparent px-3 py-1.5 text-sm text-ink-700
-                       hover:border-focus-300 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-200"
-          >
-            {CATEGORY_EMOJI[category]} {CATEGORY_LABELS[category]}
-          </Link>
-        ))}
-        <Link
-          href="/trends"
-          className="chip shrink-0 border border-ink-300 bg-transparent px-3 py-1.5 text-sm text-ink-700
-                     hover:border-focus-300 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-200"
-        >
-          📈 Trendler
-        </Link>
-      </nav>
-
       {error && <ErrorState message={error} onRetry={load} />}
 
       {loading ? (
-        <div className="space-y-3 px-4 sm:px-5">
+        <div className="divide-y divide-ink-200 px-[18px] dark:divide-ink-800">
           <StoryCardSkeleton />
           <StoryCardSkeleton />
           <StoryCardSkeleton />
         </div>
       ) : heroStory ? (
-        <div className="space-y-4 px-4 sm:px-5">
-          <section aria-labelledby="top-story">
-            <h2 id="top-story" className="mb-2 text-sm font-semibold text-ink-500 dark:text-ink-400">
-              🔥 Günün En Önemlisi
-            </h2>
+        <div className="px-[18px]">
+          <section aria-label="Günün en önemli gelişmesi" className="border-b border-ink-300 dark:border-ink-800">
+            {/* The lede needs no label — its size is the label. */}
             <StoryCard story={heroStory} variant="hero" />
           </section>
 
           {rest.length > 0 && (
-            <section aria-labelledby="digest-list" className="space-y-3">
-              <h2 id="digest-list" className="pt-2 text-sm font-semibold text-ink-500 dark:text-ink-400">
-                Günün Bilmen Gereken {digest?.items.length ?? 0} Konusu
+            <section aria-labelledby="digest-list" className="mt-5">
+              <h2
+                id="digest-list"
+                className="border-t-2 border-ink-900 pt-2 font-sans text-[11px] font-bold tracking-[0.12em] text-ink-900 dark:border-ink-100 dark:text-ink-100"
+                style={{ fontVariationSettings: "'wdth' 78" }}
+              >
+                {trUpper(`Günün ${digest?.items.length ?? 0} konusu`)}
               </h2>
-              {rest.map((entry) => (
-                <StoryCard key={entry.story.id} story={entry.story} rank={entry.rank} />
-              ))}
+              <div className="divide-y divide-ink-200 dark:divide-ink-800">
+                {rest.map((entry) => (
+                  <StoryCard key={entry.story.id} story={entry.story} rank={entry.rank} />
+                ))}
+              </div>
             </section>
           )}
 
           {!user && (
-            <div className="card p-5 text-center">
+            <div className="border-t-2 border-ink-900 py-5 text-center dark:border-ink-100">
               <p className="text-sm text-ink-600 dark:text-ink-300">
                 İlgi alanlarını seçersen bu liste tamamen sana göre sıralanır.
               </p>
