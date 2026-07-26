@@ -65,8 +65,6 @@ export interface StoryCard {
   heroImageUrl?: string | null;
   /** Subject set in display type when there is no photo — "M5", "OpenSSH", "20M$". */
   visualEntity?: string | null;
-  /** One-line descriptor shown under the subject. */
-  visualKicker?: string | null;
   publishedAt: string;
   trustScore: number;
   importanceScore: number;
@@ -128,7 +126,6 @@ export interface StoryDetail {
   lastActivityAt: string;
   heroImageUrl?: string | null;
   visualEntity?: string | null;
-  visualKicker?: string | null;
   readingMinutes: number;
   importanceScore: number;
   summary?: string | null;

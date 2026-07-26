@@ -42,9 +42,6 @@ public static class FieldLimits
     /// </summary>
     public const int VisualEntity = 24;
 
-    /// <summary>The one-line descriptor under the subject ("MUHAKEME MODELİ").</summary>
-    public const int VisualKicker = 48;
-
     /// <summary>
     /// Upper bound on how many interests a user may select. Comfortably above
     /// the seeded topic count (~43) so "select all" works, while still capping

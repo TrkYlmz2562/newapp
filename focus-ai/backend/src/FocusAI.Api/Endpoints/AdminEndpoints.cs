@@ -50,9 +50,22 @@ public static class AdminEndpoints
                 Results.Ok(await sender.Send(new BackfillImagesCommand(batchSize ?? 50), ct)))
             .WithSummary("Görseli olmayan eski makaleler için sayfayı bir kez tarayıp og:image çeker.")
             .WithDescription(
-                "Tek seferlik onarım. Her çağrı en fazla batchSize makale tarar; " +
-                "kalan sayı yanıttaki articlesRemaining alanında döner, sıfırlanana kadar tekrar çağırın.")
+                "Tek seferlik onarım. Her makale yalnızca BİR kez denenir (sonuç ne olursa olsun " +
+                "işaretlenir), o yüzden articlesRemaining her çağrıda azalır ve sıfıra iner. " +
+                "noImageOnPage = sayfada görsel yok (tekrar denemek fayda etmez), " +
+                "fetchFailed = sayfaya ulaşılamadı (sonra tekrar denenebilir).")
             .Produces<ImageBackfillReportDto>();
+
+        group.MapPost("/backfill-visual-subjects", async (
+                [FromQuery] int? batchSize,
+                ISender sender,
+                CancellationToken ct) =>
+                Results.Ok(await sender.Send(new BackfillVisualSubjectsCommand(batchSize ?? 500), ct)))
+            .WithSummary("Eski haberlerin kart öznesini başlıktan türetir (AI çağrısı yok, ücretsiz).")
+            .WithDescription(
+                "Yayınlanmış haberler yeniden zenginleştirilmediği için özne alanları boş kalır. " +
+                "Bu komut onları başlıktan çıkarır; hiçbir dış istek yapmaz ve token harcamaz.")
+            .Produces<VisualSubjectBackfillDto>();
 
         group.MapPost("/pipeline", async (ISender sender, CancellationToken ct) =>
             {

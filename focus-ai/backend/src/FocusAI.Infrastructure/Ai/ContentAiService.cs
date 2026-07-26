@@ -76,7 +76,6 @@ public sealed class ContentAiService(
             TechnicalAccuracy = Math.Clamp(JsonExtractor.GetDouble(root, "technicalAccuracy", 0.6), 0d, 1d),
             ReadingMinutes = Math.Clamp(JsonExtractor.GetInt(root, "readingMinutes", 2), 1, 15),
             VisualEntity = JsonExtractor.GetString(root, "visualEntity"),
-            VisualKicker = JsonExtractor.GetString(root, "visualKicker"),
             Provider = client.Provider.ToString(),
             Model = response.Model,
             PromptTokens = response.PromptTokens,

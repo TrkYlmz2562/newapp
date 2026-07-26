@@ -34,6 +34,13 @@ public class Article : AuditableEntity
 
     public string? ImageUrl { get; set; }
 
+    /// <summary>
+    /// When the one-off image backfill last fetched this page, whether or not it
+    /// found anything. Without it a page with genuinely no image is re-fetched on
+    /// every run, so the job never finishes and keeps hammering the publisher.
+    /// </summary>
+    public DateTimeOffset? ImageCheckedAt { get; set; }
+
     public string Language { get; set; } = "en";
 
     public DateTimeOffset PublishedAt { get; set; }

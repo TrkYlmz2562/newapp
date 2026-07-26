@@ -82,20 +82,28 @@
    * --accent-dark inline (the value depends on the story's category, so it
    * cannot be a static class); these rules pick the right one per theme, which
    * an inline style alone could not do.
+   *
+   * Each rule declares a plain fallback first: color-mix() needs Safari 16.2+,
+   * and where it is unsupported the declaration is dropped at parse time — the
+   * earlier value is what keeps the tile tinted instead of leaving the glyph at
+   * full-strength ink on a bare background.
    */
   .accent-ink {
     color: var(--accent-light);
   }
 
   .accent-field {
+    background-color: rgb(0 0 0 / 0.04);
     background-color: color-mix(in srgb, var(--accent-light) 10%, transparent);
   }
 
   .accent-rule {
+    border-color: rgb(0 0 0 / 0.12);
     border-color: color-mix(in srgb, var(--accent-light) 30%, transparent);
   }
 
   .accent-glyph {
+    color: var(--accent-light);
     color: color-mix(in srgb, var(--accent-light) 55%, transparent);
   }
 
@@ -104,14 +112,17 @@
   }
 
   .dark .accent-field {
+    background-color: rgb(255 255 255 / 0.05);
     background-color: color-mix(in srgb, var(--accent-dark) 12%, transparent);
   }
 
   .dark .accent-rule {
+    border-color: rgb(255 255 255 / 0.14);
     border-color: color-mix(in srgb, var(--accent-dark) 28%, transparent);
   }
 
   .dark .accent-glyph {
+    color: var(--accent-dark);
     color: color-mix(in srgb, var(--accent-dark) 50%, transparent);
   }
 

@@ -148,6 +148,14 @@ public sealed class EnrichStoriesCommandHandler(
         };
     }
 
+    /// <summary>
+    /// The source text a displayed term has to be found in. Deliberately the
+    /// articles' own words rather than the model's summary — grounding generated
+    /// text against other generated text proves nothing.
+    /// </summary>
+    private static string SourceCorpus(Story story) =>
+        string.Join(' ', story.Articles.Select(a => $"{a.Title} {a.BestText()}"));
+
     private void ApplySummary(Story story, StorySummaryResult result, DateTimeOffset now)
     {
         if (story.Summary is null)
@@ -172,14 +180,15 @@ public sealed class EnrichStoriesCommandHandler(
             .Where(point => !string.IsNullOrWhiteSpace(point))
             .ToList();
         // The subject is validated rather than capped: it is set in display type,
-        // so a truncated term ("OpenSS…") reads as broken. Sanitize falls back to
-        // a term extracted from the headline whenever the model's answer is
-        // missing, over-long, or merely the category restated.
+        // so a truncated term ("OpenSS…") reads as broken. Sanitize re-derives from
+        // the headline whenever the model's answer is missing, over-long, merely
+        // the category restated, or — the case a prompt cannot prevent — absent
+        // from the story altogether.
         story.Summary.VisualEntity = VisualSubject.Sanitize(
             result.VisualEntity,
             result.Title ?? story.Title,
+            SourceCorpus(story),
             FieldLimits.VisualEntity);
-        story.Summary.VisualKicker = FieldLimits.Cap(result.VisualKicker, FieldLimits.VisualKicker);
         story.Summary.Provider = FieldLimits.Cap(result.Provider, FieldLimits.ProviderName);
         story.Summary.Model = FieldLimits.Cap(result.Model, FieldLimits.ModelName);
         story.Summary.PromptTokens = result.PromptTokens;

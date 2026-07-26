@@ -120,11 +120,15 @@ public sealed record AskResultDto(
     IReadOnlyList<StoryCardDto> Citations);
 
 /// <summary>Outcome of one ingestion cycle, surfaced on the admin/ops endpoint.</summary>
-/// <summary>Result of the one-off image backfill over already-ingested articles.</summary>
+/// <summary>
+/// Result of the one-off image backfill. NoImageOnPage and FetchFailed are kept
+/// apart so the operator can tell "nothing to find here" from "try again later".
+/// </summary>
 public sealed record ImageBackfillReportDto(
     int ArticlesScanned,
     int ImagesFound,
     int NoImageOnPage,
+    int FetchFailed,
     int StoriesUpdated,
     int ArticlesRemaining);
 

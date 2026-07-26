@@ -7,7 +7,6 @@ import type { ContentCategory, Topic } from '@/lib/types';
 interface VisualStory {
   heroImageUrl?: string | null;
   visualEntity?: string | null;
-  visualKicker?: string | null;
   category: ContentCategory;
   topics?: Topic[];
 }
@@ -18,8 +17,7 @@ interface Props {
   size?: 'compact' | 'default' | 'hero';
 }
 
-/** Turkish uppercase: plain toUpperCase turns "girişim" into "GIRIŞIM". */
-const upper = (value: string) => value.toLocaleUpperCase('tr-TR');
+const fold = (value: string) => value.toLocaleLowerCase('tr-TR').trim();
 
 /**
  * The subject is the whole point of the tile, so it is set as large as it can be
@@ -68,20 +66,22 @@ export function StoryVisual({ story, className = '', size = 'default' }: Props) 
 
   const accent = CATEGORY_ACCENT[story.category] ?? CATEGORY_ACCENT.Unknown;
   const label = CATEGORY_LABELS[story.category] ?? CATEGORY_LABELS.Unknown;
+  const topics = story.topics ?? [];
 
-  // The backend fills visualEntity for every enriched story — from the model, or
-  // extracted from the headline when no model ran. The category label is the last
-  // resort so the plate is never empty.
-  const subject = story.visualEntity?.trim() || label;
-  const usedLabelAsSubject = subject === label;
-
-  const topicLine = (story.topics ?? [])
-    .slice(0, 2)
-    .map((topic) => topic.name)
-    .join(' · ');
+  // A topic name is a term matched out of the story itself, so it beats the
+  // category label — the label is the same on every card in a section, which is
+  // the "says nothing" failure this plate exists to avoid. Stories enriched
+  // before the subject field existed have no visualEntity, so this path is the
+  // common one until they are re-enriched.
+  const subject = story.visualEntity?.trim() || topics[0]?.name || label;
 
   // Never repeat the subject underneath itself.
-  const kicker = story.visualKicker?.trim() || topicLine || (usedLabelAsSubject ? '' : label);
+  const kicker =
+    topics
+      .filter((topic) => fold(topic.name) !== fold(subject))
+      .slice(0, 2)
+      .map((topic) => topic.name)
+      .join(' · ') || (fold(subject) === fold(label) ? '' : label);
 
   // The accent varies per category, so it cannot be a static Tailwind class; it
   // is handed to CSS as a variable and the .accent-* rules in globals.css pick
@@ -101,6 +101,8 @@ export function StoryVisual({ story, className = '', size = 'default' }: Props) 
         fill="none"
         stroke="currentColor"
         strokeWidth={1.6}
+        strokeLinecap="round"
+        strokeLinejoin="round"
         aria-hidden="true"
         dangerouslySetInnerHTML={{
           __html: CATEGORY_ICON[story.category] ?? CATEGORY_ICON.Unknown,
@@ -109,7 +111,10 @@ export function StoryVisual({ story, className = '', size = 'default' }: Props) 
 
       <div className="absolute inset-x-4 bottom-3 sm:inset-x-5">
         <div
-          className="truncate font-serif font-semibold leading-none tracking-tight text-ink-900 dark:text-ink-50"
+          // leading-[1.14] rather than leading-none: `truncate` clips to the line
+          // box, and at line-height 1 that shears the descenders and the â in
+          // "Yapay Zekâ".
+          className="truncate font-serif font-semibold leading-[1.14] tracking-tight text-ink-900 dark:text-ink-50"
           style={{ fontSize: subjectSize(subject.length, size) }}
           title={subject}
         >
@@ -117,8 +122,11 @@ export function StoryVisual({ story, className = '', size = 'default' }: Props) 
         </div>
 
         {kicker && size !== 'compact' && (
-          <div className="accent-ink mt-1.5 truncate font-mono text-[10px] font-bold uppercase tracking-[0.12em]">
-            {upper(kicker)}
+          // Cased by CSS, not in the DOM: baking capitals into the text makes
+          // screen readers spell it out, and Turkish casing would turn the
+          // English topic names ("TypeScript") into "TYPESCRİPT".
+          <div className="accent-ink mt-1 truncate font-mono text-[10px] font-bold uppercase tracking-[0.12em]">
+            {kicker}
           </div>
         )}
       </div>

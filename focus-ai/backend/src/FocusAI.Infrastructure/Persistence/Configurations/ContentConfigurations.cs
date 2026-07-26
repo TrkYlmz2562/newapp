@@ -134,7 +134,6 @@ public class StorySummaryConfiguration : IEntityTypeConfiguration<StorySummary>
         builder.Property(x => x.WhatShouldIDo).HasMaxLength(FieldLimits.SummarySection);
         builder.Property(x => x.ExtendedSummary).HasMaxLength(FieldLimits.ExtendedSummary);
         builder.Property(x => x.VisualEntity).HasMaxLength(FieldLimits.VisualEntity);
-        builder.Property(x => x.VisualKicker).HasMaxLength(FieldLimits.VisualKicker);
         builder.Property(x => x.Provider).HasMaxLength(FieldLimits.ProviderName);
         builder.Property(x => x.Model).HasMaxLength(FieldLimits.ModelName);
 

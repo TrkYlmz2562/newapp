@@ -52,9 +52,6 @@ public sealed record StorySummaryResult
     /// </summary>
     public string? VisualEntity { get; init; }
 
-    /// <summary>One-line descriptor under the subject ("Muhakeme modeli").</summary>
-    public string? VisualKicker { get; init; }
-
     public string Provider { get; init; } = "none";
 
     public string Model { get; init; } = "none";

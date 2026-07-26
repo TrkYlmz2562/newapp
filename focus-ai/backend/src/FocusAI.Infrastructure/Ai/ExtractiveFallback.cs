@@ -78,10 +78,6 @@ internal static class ExtractiveFallback
             // here. Without this the card would have no subject to show on the
             // (default) no-LLM path, which is most of the feed in development.
             VisualEntity = VisualSubject.FromTitle(context.Title, FieldLimits.VisualEntity),
-            // No kicker is written without a model: a coined descriptor would be
-            // the one invented string on this path. The card falls back to the
-            // story's topics instead.
-            VisualKicker = null,
             Provider = "extractive-fallback",
             Model = $"kaynaklar: {sourceList}"
         };

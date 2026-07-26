@@ -38,9 +38,6 @@ public class StorySummary : AuditableEntity
     /// </summary>
     public string? VisualEntity { get; set; }
 
-    /// <summary>One-line descriptor shown under the subject ("Muhakeme modeli").</summary>
-    public string? VisualKicker { get; set; }
-
     public string? Provider { get; set; }
 
     public string? Model { get; set; }

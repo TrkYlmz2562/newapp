@@ -9,7 +9,7 @@ namespace FocusAI.Application.Features.Ingestion;
 /// <summary>
 /// One-off repair for articles that were ingested before the extractor learned to
 /// read og:image. Fetches each page once and keeps only the lead image, then
-/// lifts it onto any story still missing a hero image.
+/// lifts images onto stories that are still missing a hero.
 /// </summary>
 /// <remarks>
 /// Deliberately manual and batched rather than a recurring job. Routine ingestion
@@ -22,29 +22,39 @@ public sealed record BackfillImagesCommand(int BatchSize = 50) : IRequest<ImageB
 public sealed class BackfillImagesCommandHandler(
     IApplicationDbContext db,
     IContentExtractor contentExtractor,
+    IDateTimeProvider clock,
     ILogger<BackfillImagesCommandHandler> logger)
     : IRequestHandler<BackfillImagesCommand, ImageBackfillReportDto>
 {
     /// <summary>Deliberately low — we are a guest on these servers.</summary>
     private const int Concurrency = 4;
 
-    private const int MaxBatch = 200;
+    /// <summary>
+    /// Bounds one admin call's wall clock. Each page can cost the ingestion
+    /// client's full retry budget, so a large batch would sit past any proxy's
+    /// idle timeout and the operator would never see the result.
+    /// </summary>
+    private const int MaxBatch = 100;
 
     public async Task<ImageBackfillReportDto> Handle(
         BackfillImagesCommand request,
         CancellationToken cancellationToken)
     {
         var take = Math.Clamp(request.BatchSize, 1, MaxBatch);
+        var now = clock.UtcNow;
 
-        // Newest first: the top of the feed is what a reader actually sees.
+        // Only pages never attempted, and only articles attached to a story —
+        // an orphaned article has no card to improve. Newest first: the top of
+        // the feed is what a reader actually sees.
         var articles = await db.Articles
-            .Where(a => a.ImageUrl == null)
+            .Where(a => a.ImageUrl == null && a.ImageCheckedAt == null && a.StoryId != null)
             .OrderByDescending(a => a.PublishedAt)
             .Take(take)
             .ToListAsync(cancellationToken);
 
         var found = 0;
-        var failed = 0;
+        var noImage = 0;
+        var fetchFailed = 0;
 
         if (articles.Count > 0)
         {
@@ -56,12 +66,12 @@ public sealed class BackfillImagesCommandHandler(
                 try
                 {
                     var page = await contentExtractor.ExtractAsync(article.Url, cancellationToken);
-                    return (article, page.ImageUrl);
+                    return (article, page.ImageUrl, Failed: false);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
                     logger.LogDebug(ex, "FocusAI image backfill failed for {Url}", article.Url);
-                    return (article, null);
+                    return (article, ImageUrl: null, Failed: true);
                 }
                 finally
                 {
@@ -69,66 +79,88 @@ public sealed class BackfillImagesCommandHandler(
                 }
             }));
 
-            foreach (var (article, imageUrl) in results)
+            foreach (var (article, imageUrl, failed) in results)
             {
-                if (string.IsNullOrWhiteSpace(imageUrl))
-                {
-                    failed++;
-                    continue;
-                }
+                // Stamped whether or not anything was found: this is what stops the
+                // next run re-fetching the same dead pages forever.
+                article.ImageCheckedAt = now;
 
-                article.ImageUrl = imageUrl;
-                found++;
+                if (!string.IsNullOrWhiteSpace(imageUrl))
+                {
+                    article.ImageUrl = imageUrl;
+                    found++;
+                }
+                else if (failed)
+                {
+                    fetchFailed++;
+                }
+                else
+                {
+                    noImage++;
+                }
             }
+
+            // Committed before the story pass so a timeout during it cannot throw
+            // away the fetches we just paid for.
+            await db.SaveChangesAsync(cancellationToken);
         }
 
-        // Lift the newly-found images onto their stories. Mirrors the clustering
-        // rule: an existing hero image is never overwritten, and the primary
-        // article wins over the rest of the cluster.
-        var storiesUpdated = 0;
+        var storiesUpdated = await LiftImagesOntoStoriesAsync(cancellationToken);
 
-        if (found > 0)
-        {
-            var storyIds = articles
-                .Where(a => a.StoryId.HasValue && !string.IsNullOrWhiteSpace(a.ImageUrl))
-                .Select(a => a.StoryId!.Value)
-                .Distinct()
-                .ToList();
-
-            var stories = await db.Stories
-                .Where(s => storyIds.Contains(s.Id) && s.HeroImageUrl == null)
-                .Include(s => s.Articles)
-                .ToListAsync(cancellationToken);
-
-            foreach (var story in stories)
-            {
-                var image = story.Articles
-                    .OrderByDescending(a => a.IsPrimary)
-                    .ThenByDescending(a => a.PublishedAt)
-                    .Select(a => a.ImageUrl)
-                    .FirstOrDefault(url => !string.IsNullOrWhiteSpace(url));
-
-                if (string.IsNullOrWhiteSpace(image))
-                {
-                    continue;
-                }
-
-                story.HeroImageUrl = image;
-                storiesUpdated++;
-            }
-        }
-
-        await db.SaveChangesAsync(cancellationToken);
-
-        var remaining = await db.Articles.CountAsync(a => a.ImageUrl == null, cancellationToken);
+        var remaining = await db.Articles
+            .CountAsync(
+                a => a.ImageUrl == null && a.ImageCheckedAt == null && a.StoryId != null,
+                cancellationToken);
 
         logger.LogInformation(
-            "FocusAI image backfill: {Found}/{Scanned} images found, {Stories} stories updated, {Remaining} articles left",
+            "FocusAI image backfill: {Found} found, {NoImage} without an image, {Failed} unreachable, " +
+            "{Stories} stories updated, {Remaining} articles left",
             found,
-            articles.Count,
+            noImage,
+            fetchFailed,
             storiesUpdated,
             remaining);
 
-        return new ImageBackfillReportDto(articles.Count, found, failed, storiesUpdated, remaining);
+        return new ImageBackfillReportDto(articles.Count, found, noImage, fetchFailed, storiesUpdated, remaining);
+    }
+
+    /// <summary>
+    /// Gives a hero image to every story that has one available on a member
+    /// article. Runs unconditionally and costs no HTTP: clustering only ever
+    /// lifts the *primary* article's image, so a story whose primary has none
+    /// stays blank even when a merged article carries a perfectly good picture.
+    /// </summary>
+    private async Task<int> LiftImagesOntoStoriesAsync(CancellationToken cancellationToken)
+    {
+        var stories = await db.Stories
+            .Where(s => s.HeroImageUrl == null && s.Articles.Any(a => a.ImageUrl != null))
+            .Include(s => s.Articles)
+            .ToListAsync(cancellationToken);
+
+        var updated = 0;
+
+        foreach (var story in stories)
+        {
+            var image = story.Articles
+                .OrderByDescending(a => a.IsPrimary)
+                .ThenByDescending(a => a.PublishedAt)
+                .Select(a => a.ImageUrl)
+                .FirstOrDefault(url => !string.IsNullOrWhiteSpace(url));
+
+            if (string.IsNullOrWhiteSpace(image))
+            {
+                continue;
+            }
+
+            story.HeroImageUrl = image;
+            updated++;
+        }
+
+        if (updated > 0)
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+
+        return updated;
     }
 }
