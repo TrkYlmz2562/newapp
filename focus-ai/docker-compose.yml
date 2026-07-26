@@ -87,12 +87,15 @@ services:
       Llm__Providers__OpenAI__ApiKey: ${OPENAI_API_KEY:-}
       Llm__Providers__Anthropic__ApiKey: ${ANTHROPIC_API_KEY:-}
       Llm__Providers__Gemini__ApiKey: ${GEMINI_API_KEY:-}
-      # Varsayılan: gemini-flash-lite-latest (hep en güncel flash-lite; en ucuz
-      # kademe ve "yeni kullanıcılara kapalı" duvarına toslamaz). NOT: gemini-2.5-*
-      # modelleri yeni hesaplara kapatıldı, 404 döndürür. Anahtarının desteklediği
-      # modelleri görmek için:
+      # Sürüm SABİTLENMİŞ olmalı, "-latest" takma adı DEĞİL. Google takma adları
+      # her yeni sürümde sessizce yeni modele bağlıyor ve fiyatın değişebileceğini
+      # kendisi yazıyor: 3.5 Flash-Lite, 2.5 Flash-Lite'ın 3 katı girdi / 6,25 katı
+      # çıktı fiyatına sahip. Yani takma ad kullanmak, birim maliyetin bir gecede
+      # dörde katlanmasına açık kapı bırakır.
+      # NOT: gemini-2.5-FLASH (lite olmayan) yeni hesaplara kapatıldı ve 404 döner;
+      # gemini-2.5-flash-lite açıktır. Anahtarının desteklediklerini görmek için:
       #   curl "https://generativelanguage.googleapis.com/v1beta/models?key=ANAHTAR"
-      Llm__Providers__Gemini__Model: ${GEMINI_MODEL:-gemini-flash-lite-latest}
+      Llm__Providers__Gemini__Model: ${GEMINI_MODEL:-gemini-2.5-flash-lite}
       Llm__Providers__OpenRouter__ApiKey: ${OPENROUTER_API_KEY:-}
       Embeddings__Provider: ${EMBEDDINGS_PROVIDER:-Disabled}
       Embeddings__ApiKey: ${EMBEDDINGS_API_KEY:-${OPENAI_API_KEY:-}}

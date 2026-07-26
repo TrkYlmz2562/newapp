@@ -13,10 +13,17 @@
 
 -- NOTE: psql's \set takes the whole rest of the line as the value, so these
 -- cannot carry trailing comments.
--- in_price / out_price: USD per 1M tokens. usd_try: the rate you were charged at.
+--
+-- USD per 1M tokens. Defaults are Gemini 2.5 Flash-Lite. Check section 4's model
+-- column before trusting the total — the rates differ by 4x across the family:
+--   gemini-2.5-flash-lite   0.10 / 0.40
+--   gemini-3.5-flash-lite   0.30 / 2.50
+--   gemini-2.5-flash        0.30 / 2.50
+-- usd_try: the rate on the day you were charged. Google fixes the TRY rate
+-- monthly, so a month-old charge used a different one than today's.
 \set in_price 0.10
 \set out_price 0.40
-\set usd_try 41.0
+\set usd_try 47.3
 
 \echo ''
 \echo '=== 1. Toplam (bugüne kadar) ==============================================='
