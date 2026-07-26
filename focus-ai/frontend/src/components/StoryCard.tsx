@@ -82,7 +82,7 @@ export function StoryCard({ story, rank, variant = 'default' }: Props) {
   const tone = METER_TONE[trustBand(story.trustScore).tone];
 
   return (
-    <article className="card animate-fade-up relative overflow-hidden">
+    <article className="card relative overflow-hidden">
       {/*
         The whole card navigates, but the link is an overlay rather than a wrapper.
         Wrapping put <button> elements inside an <a>, which is invalid HTML and had
@@ -137,12 +137,6 @@ export function StoryCard({ story, rank, variant = 'default' }: Props) {
           <div className="flex items-center font-mono text-[11px] tracking-[0.13em] text-ink-500 dark:text-ink-400">
             <span className="mr-[7px] font-bold text-focus-600 dark:text-focus-400">›</span>
             {trUpper(CATEGORY_LABELS[story.category])} · {trUpper(timeAgo(story.publishedAt))}
-            {isHero && (
-              <span
-                className="ml-1.5 inline-block h-[13px] w-[7px] translate-y-[2px] animate-blink bg-focus-600 motion-reduce:hidden dark:bg-focus-400"
-                aria-hidden="true"
-              />
-            )}
           </div>
 
           <h3
