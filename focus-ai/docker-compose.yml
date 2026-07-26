@@ -84,11 +84,12 @@ services:
       Llm__Providers__OpenAI__ApiKey: ${OPENAI_API_KEY:-}
       Llm__Providers__Anthropic__ApiKey: ${ANTHROPIC_API_KEY:-}
       Llm__Providers__Gemini__ApiKey: ${GEMINI_API_KEY:-}
-      # Güvenli varsayılan: gemini-2.5-flash (ücretsiz katmanda generateContent'e
-      # açık). NOT: gemini-2.5-flash-lite bazı projelerde 404 döndürebilir.
-      # Anahtarının hangi modelleri desteklediğini görmek için:
+      # Varsayılan: gemini-flash-lite-latest (hep en güncel flash-lite; en ucuz
+      # kademe ve "yeni kullanıcılara kapalı" duvarına toslamaz). NOT: gemini-2.5-*
+      # modelleri yeni hesaplara kapatıldı, 404 döndürür. Anahtarının desteklediği
+      # modelleri görmek için:
       #   curl "https://generativelanguage.googleapis.com/v1beta/models?key=ANAHTAR"
-      Llm__Providers__Gemini__Model: ${GEMINI_MODEL:-gemini-2.5-flash}
+      Llm__Providers__Gemini__Model: ${GEMINI_MODEL:-gemini-flash-lite-latest}
       Llm__Providers__OpenRouter__ApiKey: ${OPENROUTER_API_KEY:-}
       Embeddings__Provider: ${EMBEDDINGS_PROVIDER:-Disabled}
       Embeddings__ApiKey: ${EMBEDDINGS_API_KEY:-${OPENAI_API_KEY:-}}
