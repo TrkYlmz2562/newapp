@@ -138,6 +138,11 @@ services:
       Cors__Origins__0: http://localhost:3000
       # Telefondan/LAN'dan erişim için PC'nin adresini .env'de ver:
       #   EXTRA_CORS_ORIGIN=http://192.168.1.50:3000
+      #
+      # Tailscale HTTPS kurulumunda (README) buna gerek yok: frontend ve API tek
+      # ts.net adının altında toplandığı için istekler aynı kökene gidiyor.
+      # Düz HTTP ile erişirsen servis worker kaydolmaz, yani çevrimdışı okuma ve
+      # bildirimler sessizce kapalı kalır.
       Cors__Origins__1: ${EXTRA_CORS_ORIGIN:-}
       Search__Url: http://meilisearch:7700
       Search__ApiKey: ${MEILI_MASTER_KEY:-focusai-dev-master-key}

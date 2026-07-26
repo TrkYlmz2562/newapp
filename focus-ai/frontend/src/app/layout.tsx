@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { BottomNav } from '@/components/BottomNav';
 import { AuthProvider } from '@/components/AuthProvider';
+import { OfflineBanner } from '@/components/OfflineBanner';
 import { ServiceWorkerRegistrar } from '@/components/ServiceWorkerRegistrar';
 import { themeBootstrapScript } from '@/components/ThemeToggle';
 
@@ -53,6 +54,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-dvh">
         <AuthProvider>
           <div className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col">
+            <OfflineBanner />
             <main className="flex-1 pb-24">{children}</main>
             <BottomNav />
           </div>

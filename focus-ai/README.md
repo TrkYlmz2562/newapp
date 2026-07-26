@@ -118,6 +118,38 @@ Sağlayıcı bağımsızdır; `appsettings.json` içindeki `Llm` bölümünden s
 
 ---
 
+## Telefondan erişim ve HTTPS (çevrimdışı okuma bunun arkasında)
+
+Tailscale IP'siyle `http://100.x.y.z:3000` çalışır ama **PWA katmanı tamamen
+ölüdür**: servis worker'lar yalnızca güvenli bağlamda (HTTPS ya da `localhost`)
+kaydolur, `'serviceWorker' in navigator` düz HTTP'de `false` döner. Yani
+çevrimdışı okuma, ana ekrana ekleme ve bildirimler sessizce kapalıdır —
+uygulama bunun dışında gayet sağlıklı göründüğü için fark edilmesi zordur.
+Geliştirmede hiç görünmez, çünkü `localhost` muaf.
+
+Çözüm kod değil taşıma katmanı. Tailscale kendi `*.ts.net` adına ücretsiz
+sertifika veriyor; iki komut yetiyor (PC'de, `docker compose up` çalışırken):
+
+```bash
+tailscale serve --bg --set-path /     http://localhost:3000
+tailscale serve --bg --set-path /api  http://localhost:5210/api
+tailscale serve status          # https://<makine>.<tailnet>.ts.net
+```
+
+Frontend ve API tek adın altında toplandığı için **CORS devreden çıkıyor**.
+Bunu kullanmak için `.env`:
+
+```bash
+NEXT_PUBLIC_API_URL=          # boş bırak = aynı köken
+```
+
+ve `docker compose up -d --build web` (bu değer derleme anında gömülüyor).
+
+Sonra telefonda `https://<makine>.<tailnet>.ts.net` → Safari'de Paylaş →
+"Ana Ekrana Ekle". Kaydettiğin haberler artık sinyalsiz açılır.
+
+---
+
 ## Çeviri (opsiyonel, varsayılan kapalı)
 
 LLM tanımlı değilken hat, makalenin kendi cümlelerini çıkarıp yayınlar. İngilizce

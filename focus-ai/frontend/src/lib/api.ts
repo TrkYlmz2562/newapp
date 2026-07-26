@@ -17,6 +17,17 @@ import type {
   User,
 } from './types';
 
+/**
+ * Where the API lives.
+ *
+ * An explicitly empty NEXT_PUBLIC_API_URL means "same origin": every request
+ * becomes a relative /api/... path. That is the mode to use behind a single
+ * HTTPS hostname (the Tailscale setup in the README), where it also removes CORS
+ * from the picture entirely. Safe because every call in this file runs in the
+ * browser — the one server component, layout.tsx, does no fetching.
+ *
+ * Baked in at build time by Next.js, so changing it means rebuilding the image.
+ */
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? 'http://localhost:5210';
 

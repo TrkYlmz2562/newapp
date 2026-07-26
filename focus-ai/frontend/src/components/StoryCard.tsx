@@ -12,6 +12,7 @@ import {
   timeAgo,
   trustBand,
 } from '@/lib/format';
+import { forgetOffline, saveForOffline } from '@/lib/offline';
 import type { StoryCard as Story } from '@/lib/types';
 import { StoryVisual } from './StoryVisual';
 import { FeedbackButtons } from './FeedbackButtons';
@@ -49,6 +50,10 @@ export function StoryCard({ story, rank, variant = 'default' }: Props) {
     try {
       const result = await api.bookmarks.toggle(story.id);
       setSaved(result.saved);
+
+      // Saved means "I want this later", and later is exactly when there is no
+      // signal. Best-effort and silent — see lib/offline.
+      void (result.saved ? saveForOffline(story.slug) : forgetOffline(story.slug));
     } catch {
       setSaved(!next);
     } finally {

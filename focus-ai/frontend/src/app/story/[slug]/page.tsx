@@ -12,6 +12,7 @@ import { ShareButton } from '@/components/ShareButton';
 import { StoryVisual } from '@/components/StoryVisual';
 import { TrustPanel } from '@/components/TrustBadge';
 import { api } from '@/lib/api';
+import { forgetOffline, saveForOffline } from '@/lib/offline';
 import {
   CATEGORY_EMOJI,
   CATEGORY_LABELS,
@@ -92,6 +93,10 @@ export default function StoryPage() {
     try {
       const result = await api.bookmarks.toggle(story.id);
       setSaved(result.saved);
+
+      // Saving also keeps the story readable with no signal. Best-effort and
+      // silent — see lib/offline.
+      void (result.saved ? saveForOffline(story.slug) : forgetOffline(story.slug));
     } catch {
       setSaved(!next);
     }

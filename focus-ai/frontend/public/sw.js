@@ -7,9 +7,17 @@
  * The split below is what reconciles those.
  */
 
-const VERSION = 'v1';
+const VERSION = 'v2';
 const SHELL_CACHE = `focusai-shell-${VERSION}`;
 const CONTENT_CACHE = `focusai-content-${VERSION}`;
+
+/**
+ * Stories the reader deliberately saved. Kept apart from CONTENT_CACHE because
+ * that one expires after twelve hours — correct for a feed, wrong for something
+ * someone saved on purpose to read on a plane. Nothing here expires; entries
+ * leave only when the reader un-saves the story.
+ */
+const OFFLINE_CACHE = `focusai-offline-${VERSION}`;
 
 /** Navigations fall back to this when the network is unreachable. */
 const OFFLINE_URL = '/offline.html';
@@ -74,6 +82,15 @@ async function networkFirstNavigation(request) {
   try {
     return await fetch(request);
   } catch {
+    // Deliberately saved pages are checked first: they are the ones the reader
+    // expects to work with no signal, and they never expire.
+    //
+    // ignoreVary because the worker saved these with a plain fetch while the page
+    // asks with an Authorization header. A Vary on the response would otherwise
+    // make the entry unmatchable — saved, present, and never served.
+    const saved = await caches.match(request, { cacheName: OFFLINE_CACHE, ignoreVary: true });
+    if (saved) return saved;
+
     const cached = await caches.match(request);
     return cached ?? (await caches.match(OFFLINE_URL)) ?? Response.error();
   }
@@ -95,6 +112,9 @@ async function networkFirstApi(request) {
 
     return response;
   } catch (error) {
+    const saved = await caches.match(request, { cacheName: OFFLINE_CACHE, ignoreVary: true });
+    if (saved) return saved;
+
     const cached = await cache.match(request);
     if (!cached) throw error;
 
@@ -106,6 +126,49 @@ async function networkFirstApi(request) {
 
     return cached;
   }
+}
+
+/*
+ * Offline saving. The page asks for a story to be kept; the worker fetches both
+ * halves of it — the rendered page and the API response the page reads — and
+ * stores them where nothing expires them.
+ *
+ * Doing the fetch here rather than in the page is what makes it work: the entries
+ * have to land in the worker's cache keyed by the exact Request the fetch handler
+ * will later look up, and only the worker can guarantee that.
+ */
+self.addEventListener('message', (event) => {
+  const data = event.data;
+  if (!data || typeof data.type !== 'string') return;
+
+  if (data.type === 'FOCUSAI_SAVE_OFFLINE') {
+    event.waitUntil(saveOffline(data.urls ?? []));
+  } else if (data.type === 'FOCUSAI_FORGET_OFFLINE') {
+    event.waitUntil(forgetOffline(data.urls ?? []));
+  }
+});
+
+async function saveOffline(urls) {
+  const cache = await caches.open(OFFLINE_CACHE);
+
+  await Promise.all(
+    urls.map(async (url) => {
+      try {
+        // credentials:'include' would attach cookies we do not use; the story
+        // detail endpoint is readable anonymously, and caching a personalised
+        // response would leak one reader's state into another's cache.
+        const response = await fetch(url, { cache: 'no-store' });
+        if (response.ok) await cache.put(url, response);
+      } catch {
+        // Saving is best-effort: no signal now simply means nothing to save.
+      }
+    }),
+  );
+}
+
+async function forgetOffline(urls) {
+  const cache = await caches.open(OFFLINE_CACHE);
+  await Promise.all(urls.map((url) => cache.delete(url)));
 }
 
 async function cacheFirst(request, cacheName) {
