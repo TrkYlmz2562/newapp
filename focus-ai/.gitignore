@@ -1,0 +1,15 @@
+# .NET
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+
+# Node
+node_modules/
+.next/
+next-env.d.ts
+npm-debug.log*
+.env*.local
+
+# Local tooling output
+*.tsbuildinfo

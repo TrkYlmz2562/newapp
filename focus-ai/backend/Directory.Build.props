@@ -1,0 +1,22 @@
+<Project>
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!--
+      Globalization must stay ON. Invariant mode drops ICU, which silently breaks
+      two things this product depends on: Unicode decomposition (so "Açık" would
+      not normalise to "acik", defeating de-duplication and search across Turkish
+      text) and the time-zone database (so every user's local "08:00" digest hour
+      would quietly collapse to UTC). Container images must therefore ship libicu.
+    -->
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+</Project>

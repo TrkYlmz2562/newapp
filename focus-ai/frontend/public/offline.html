@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Çevrimdışısın · Focus AI</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        padding: 2rem;
+        font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        background: #f6f7f9;
+        color: #0f1521;
+      }
+      @media (prefers-color-scheme: dark) {
+        body { background: #080b12; color: #eceef2; }
+        .muted { color: #8290a9 !important; }
+      }
+      main { max-width: 24rem; text-align: center; }
+      h1 { font-size: 1.25rem; margin: 0.75rem 0 0.5rem; }
+      p { margin: 0; line-height: 1.6; font-size: 0.9rem; }
+      .muted { color: #61708d; }
+      .emoji { font-size: 2.5rem; }
+      button {
+        margin-top: 1.5rem;
+        border: 0;
+        border-radius: 0.75rem;
+        background: #336aff;
+        color: #fff;
+        font: inherit;
+        font-weight: 600;
+        padding: 0.7rem 1.4rem;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="emoji" aria-hidden="true">📡</div>
+      <h1>Bağlantı yok</h1>
+      <p class="muted">
+        Focus AI şu an internete ulaşamıyor. Daha önce açtığın haberler çevrimdışı okunabilir.
+      </p>
+      <button type="button" onclick="location.reload()">Tekrar dene</button>
+    </main>
+  </body>
+</html>

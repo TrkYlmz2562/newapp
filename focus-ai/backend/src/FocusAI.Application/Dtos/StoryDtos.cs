@@ -1,0 +1,130 @@
+using FocusAI.Domain.Enums;
+
+namespace FocusAI.Application.Dtos;
+
+public sealed record TopicDto(Guid Id, string Name, string Slug, TopicKind Kind);
+
+public sealed record SourceRefDto(
+    Guid Id,
+    string Name,
+    string Slug,
+    string Url,
+    bool IsOfficial,
+    string? IconUrl,
+    DateTimeOffset PublishedAt,
+    string ArticleTitle);
+
+public sealed record TrustDto(
+    int Total,
+    int OfficialSourceScore,
+    int CorroborationScore,
+    int RecencyScore,
+    int TechnicalAccuracyScore,
+    int CommunityScore,
+    string? Explanation);
+
+public sealed record AnalysisDto(
+    string WhyImportant,
+    string? RealImpact,
+    HypeLevel Hype,
+    string? HypeReasoning,
+    LearnUrgency LearnUrgency,
+    LongevityOutlook Longevity,
+    string? LongevityReasoning,
+    IReadOnlyDictionary<string, string> StackNotes,
+    double Confidence);
+
+public sealed record StoryLinkDto(StoryLinkKind Kind, string Url, string Title, string? Description, string? ThumbnailUrl);
+
+/// <summary>Compact shape used by feed lists, digests and search results.</summary>
+public sealed record StoryCardDto
+{
+    public required Guid Id { get; init; }
+
+    public required string Slug { get; init; }
+
+    public required string Title { get; init; }
+
+    public string? Dek { get; init; }
+
+    public required ContentCategory Category { get; init; }
+
+    public string? Summary { get; init; }
+
+    public string? WhyItMatters { get; init; }
+
+    public string? HeroImageUrl { get; init; }
+
+    public required DateTimeOffset PublishedAt { get; init; }
+
+    public required int TrustScore { get; init; }
+
+    public required int ImportanceScore { get; init; }
+
+    public required int SourceCount { get; init; }
+
+    public required int ReadingMinutes { get; init; }
+
+    public IReadOnlyList<TopicDto> Topics { get; init; } = [];
+
+    public bool IsBookmarked { get; init; }
+
+    /// <summary>Why this card is in front of this reader — filled by ranked endpoints only.</summary>
+    public string? Reason { get; init; }
+}
+
+/// <summary>Everything the detail page in PRD section 8 renders.</summary>
+public sealed record StoryDetailDto
+{
+    public required Guid Id { get; init; }
+
+    public required string Slug { get; init; }
+
+    public required string Title { get; init; }
+
+    public string? Dek { get; init; }
+
+    public required ContentCategory Category { get; init; }
+
+    public required DateTimeOffset PublishedAt { get; init; }
+
+    public required DateTimeOffset LastActivityAt { get; init; }
+
+    public string? HeroImageUrl { get; init; }
+
+    public required int ReadingMinutes { get; init; }
+
+    public required int ImportanceScore { get; init; }
+
+    public string? Summary { get; init; }
+
+    public string? WhyItMatters { get; init; }
+
+    public string? WhoIsAffected { get; init; }
+
+    public string? WhatShouldIDo { get; init; }
+
+    public IReadOnlyList<string> KeyPoints { get; init; } = [];
+
+    public string? ExtendedSummary { get; init; }
+
+    public TrustDto? Trust { get; init; }
+
+    public AnalysisDto? Analysis { get; init; }
+
+    public IReadOnlyList<SourceRefDto> Sources { get; init; } = [];
+
+    public IReadOnlyList<StoryLinkDto> Links { get; init; } = [];
+
+    public IReadOnlyList<TopicDto> Topics { get; init; } = [];
+
+    public IReadOnlyList<StoryCardDto> Related { get; init; } = [];
+
+    public bool IsBookmarked { get; init; }
+
+    /// <summary>
+    /// Stack-specific note picked out of <see cref="AnalysisDto.StackNotes"/> for
+    /// this reader's declared interests — the ".NET geliştiriyorsan…" callout.
+    /// </summary>
+    public string? PersonalNote { get; init; }
+}
