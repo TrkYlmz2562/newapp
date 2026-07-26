@@ -1,5 +1,4 @@
 import type {
-  FinanceFeed,
   AskResult,
   AuthResult,
   Digest,
@@ -244,11 +243,6 @@ export const api = {
      */
     clearFeedback: (storyId: string) =>
       request<void>(`/api/stories/${storyId}/interactions/feedback`, { method: 'DELETE' }),
-  },
-
-  finance: {
-    feed: (conditional = false, take = 40) =>
-      request<FinanceFeed>(`/api/finance${qs({ conditional, take })}`),
   },
 
   digest: {

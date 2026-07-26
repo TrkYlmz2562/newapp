@@ -75,6 +75,8 @@ export interface StoryCard {
   isBookmarked: boolean;
   /** This reader already opened it — the reason the ranker pushed it down. */
   isRead: boolean;
+  /** Finance stories only; null everywhere else. */
+  commitment?: Commitment | null;
   /** This reader's own verdict, when they gave one. Null means they have not said. */
   feedback?: StoryFeedback | null;
   reason?: string | null;
@@ -161,6 +163,8 @@ export interface StoryDetail {
   comparison: ComparisonPoint[];
   topics: Topic[];
   related: StoryCard[];
+  /** Finance stories only; null everywhere else. */
+  commitment?: Commitment | null;
   isBookmarked: boolean;
   /** This reader's own verdict, when they gave one. Null means they have not said. */
   feedback?: StoryFeedback | null;
@@ -390,10 +394,11 @@ export type FinanceInstrument =
 
 export type DatePrecision = 'None' | 'Day' | 'Window';
 
-export interface FinanceItem {
-  id: string;
-  slug: string;
-  title: string;
+/**
+ * How firm a finance development is. Travels with the story rather than living in
+ * a section of its own: finance is a category in the feed, not a destination.
+ */
+export interface Commitment {
   tier: CommitmentTier;
   horizon: EventHorizon;
   instrument: FinanceInstrument;
@@ -405,14 +410,8 @@ export interface FinanceItem {
   quote?: string | null;
   condition?: string | null;
   reference?: string | null;
-  sourceCount: number;
-  publishedAt: string;
-  topics: string[];
-}
-
-export interface FinanceFeed {
-  realized: FinanceItem[];
-  soon: FinanceItem[];
-  later: FinanceItem[];
-  generatedAt: string;
+  /** The full tier x horizon matrix clears this as settled, not still in motion. */
+  isSettled: boolean;
+  /** A real agreement still waiting on a named approval. */
+  isConditional: boolean;
 }

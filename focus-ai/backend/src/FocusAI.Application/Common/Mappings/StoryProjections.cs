@@ -27,6 +27,19 @@ public static class StoryProjections
             ImportanceScore = story.ImportanceScore,
             SourceCount = story.SourceCount,
             ReadingMinutes = story.ReadingMinutes,
+            Commitment = story.Commitment == null
+                ? null
+                : new CommitmentDto(
+                    story.Commitment.Tier,
+                    story.Commitment.Horizon,
+                    story.Commitment.Instrument,
+                    story.Commitment.Event,
+                    story.Commitment.DateText,
+                    story.Commitment.EventDate,
+                    story.Commitment.DatePrecision,
+                    story.Commitment.Quote,
+                    story.Commitment.Condition,
+                    story.Commitment.Reference),
             Topics = story.Topics
                 .OrderByDescending(t => t.Weight)
                 .Select(t => new TopicDto(t.TopicId, t.Topic!.Name, t.Topic.Slug, t.Topic.Kind))
@@ -93,6 +106,19 @@ public static class StoryProjections
                     a.PublishedAt,
                     a.Title))
                 .ToList(),
+            Commitment = story.Commitment is null
+                ? null
+                : new CommitmentDto(
+                    story.Commitment.Tier,
+                    story.Commitment.Horizon,
+                    story.Commitment.Instrument,
+                    story.Commitment.Event,
+                    story.Commitment.DateText,
+                    story.Commitment.EventDate,
+                    story.Commitment.DatePrecision,
+                    story.Commitment.Quote,
+                    story.Commitment.Condition,
+                    story.Commitment.Reference),
             Comparison = story.Comparison is null
                 ? []
                 : story.Comparison.Points

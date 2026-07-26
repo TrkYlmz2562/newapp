@@ -3,11 +3,18 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-/** PRD section 7, plus the Finans section. */
+/**
+ * PRD section 7.
+ *
+ * Finance is deliberately not here. A finance development is a story like any
+ * other and belongs in the feed, competing on importance — giving it an address
+ * of its own made it a place you had to remember to visit. It reaches the reader
+ * as a category chip instead, and the commitment classification that used to gate
+ * the section now gates entry to the feed and badges the card.
+ */
 const ITEMS = [
   { href: '/', label: 'Ana Sayfa', icon: HomeIcon },
   { href: '/explore', label: 'Keşfet', icon: CompassIcon },
-  { href: '/finans', label: 'Finans', icon: BankIcon },
   { href: '/bookmarks', label: 'Kayıtlar', icon: BookmarkIcon },
   { href: '/learning', label: 'Öğren', icon: SparkIcon },
   { href: '/profile', label: 'Profil', icon: UserIcon },
@@ -68,15 +75,6 @@ function CompassIcon({ className, filled }: IconProps) {
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
       <circle cx="12" cy="12" r="9" fill={filled ? 'currentColor' : 'none'} opacity={filled ? 0.15 : 1} />
       <path strokeLinecap="round" strokeLinejoin="round" d="m15.5 8.5-2 5-5 2 2-5z" />
-    </svg>
-  );
-}
-
-function BankIcon({ className, filled }: IconProps) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3 21h18M12 3l9 5H3z" />
-      <path strokeLinecap="round" d="M6 21V11M10 21V11M14 21V11M18 21V11" opacity={filled ? 1 : 0.75} />
     </svg>
   );
 }

@@ -1,4 +1,5 @@
 using FocusAI.Application.Common.Interfaces;
+using FocusAI.Application.Common.Mappings;
 using FocusAI.Application.Common.Services;
 using FocusAI.Domain.Entities.Digests;
 using FocusAI.Domain.Enums;
@@ -65,6 +66,7 @@ public sealed class GenerateDigestCommandHandler(
         var candidates = await db.Stories
             .AsNoTracking()
             .Where(s => s.Status == StoryStatus.Published && s.PublishedAt >= cutoff)
+            .Where(StoryFilters.VisibleToReaders)
             .OrderByDescending(s => s.ImportanceScore)
             .Take(CandidatePoolSize)
             .Select(s => new

@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
 import { ErrorState } from '@/components/Shell';
 import { StoryCard, StoryCardSkeleton } from '@/components/StoryCard';
+import { CommitmentPanel } from '@/components/CommitmentBadge';
 import { CoverageComparison } from '@/components/CoverageComparison';
 import { FeedbackButtons } from '@/components/FeedbackButtons';
 import { ShareButton } from '@/components/ShareButton';
@@ -256,6 +257,8 @@ export default function StoryPage() {
           )}
         </section>
       )}
+
+      {story.commitment && <CommitmentPanel commitment={story.commitment} />}
 
       <CoverageComparison
         sources={story.sources}

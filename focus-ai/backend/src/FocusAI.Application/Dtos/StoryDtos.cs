@@ -1,4 +1,5 @@
 using FocusAI.Domain.Enums;
+using FocusAI.Domain.Text;
 
 namespace FocusAI.Application.Dtos;
 
@@ -35,6 +36,44 @@ public sealed record AnalysisDto(
     double Confidence);
 
 public sealed record StoryLinkDto(StoryLinkKind Kind, string Url, string Title, string? Description, string? ThumbnailUrl);
+
+/// <summary>
+/// The commitment classification behind a finance story: what was decided, by
+/// whom, when it takes effect, and the sentence in the source that says so.
+/// </summary>
+/// <remarks>
+/// This travels with the story rather than living in a section of its own. A
+/// finance development belongs in the feed alongside everything else; what it
+/// needs is a label saying how firm it is, not a separate address.
+///
+/// There is deliberately no score or percentage here. A number beside a financial
+/// claim reads as a precision this product does not have — the card shows the
+/// tier's name, the document behind it and a verbatim quote, all of which the
+/// reader can check.
+/// </remarks>
+public sealed record CommitmentDto(
+    CommitmentTier Tier,
+    EventHorizon Horizon,
+    FinanceInstrument Instrument,
+    string? Event,
+    string? DateText,
+    DateOnly? EventDate,
+    DatePrecision DatePrecision,
+    string? Quote,
+    string? Condition,
+    string? Reference)
+{
+    /// <summary>
+    /// True when the full tier × horizon matrix clears this as settled news rather
+    /// than something still in motion. Computed on read, never stored: the matrix
+    /// is the one in <see cref="CommitmentLexicon"/> and must not be duplicated
+    /// into a column that can go stale against it.
+    /// </summary>
+    public bool IsSettled => CommitmentLexicon.IsPublishable(Tier, Horizon, Instrument);
+
+    /// <summary>True when a real agreement is still waiting on a named approval.</summary>
+    public bool IsConditional => CommitmentLexicon.IsConditional(Tier, Horizon);
+}
 
 /// <summary>Compact shape used by feed lists, digests and search results.</summary>
 public sealed record StoryCardDto
@@ -77,6 +116,12 @@ public sealed record StoryCardDto
     /// seen stories; showing it is what stops that looking arbitrary.
     /// </summary>
     public bool IsRead { get; init; }
+
+    /// <summary>
+    /// Set on finance stories only. Null everywhere else — it is what the card
+    /// badges instead of showing a trust number next to a money claim.
+    /// </summary>
+    public CommitmentDto? Commitment { get; init; }
 
     /// <summary>
     /// This reader's own verdict, when they gave one: <c>Helpful</c> or
@@ -135,6 +180,9 @@ public sealed record StoryDetailDto
 
     public IReadOnlyList<StoryLinkDto> Links { get; init; } = [];
 
+    /// <summary>The commitment classification, on finance stories only.</summary>
+    public CommitmentDto? Commitment { get; init; }
+
     /// <summary>How the sources covering this story agree and differ. Empty with one source.</summary>
     public IReadOnlyList<ComparisonPointDto> Comparison { get; init; } = [];
 
@@ -165,33 +213,3 @@ public sealed record ComparisonPointDto(
     IReadOnlyList<string> Sources,
     string Quote,
     string QuoteSource);
-
-/// <summary>
-/// One committed finance development. There is deliberately no score, percentage
-/// or rating here: the card shows what makes the item checkable — the tier's name,
-/// the document behind it, and a verbatim sentence — rather than a number implying
-/// a likelihood the product cannot know.
-/// </summary>
-public sealed record FinanceItemDto(
-    Guid Id,
-    string Slug,
-    string Title,
-    CommitmentTier Tier,
-    EventHorizon Horizon,
-    FinanceInstrument Instrument,
-    string? Event,
-    string? DateText,
-    DateOnly? EventDate,
-    DatePrecision DatePrecision,
-    string? Quote,
-    string? Condition,
-    string? Reference,
-    int SourceCount,
-    DateTimeOffset PublishedAt,
-    IReadOnlyList<string> Topics);
-
-public sealed record FinanceFeedDto(
-    IReadOnlyList<FinanceItemDto> Realized,
-    IReadOnlyList<FinanceItemDto> Soon,
-    IReadOnlyList<FinanceItemDto> Later,
-    DateTimeOffset GeneratedAt);

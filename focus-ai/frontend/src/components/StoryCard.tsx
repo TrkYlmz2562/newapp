@@ -15,6 +15,7 @@ import {
 import { forgetOffline, saveForOffline } from '@/lib/offline';
 import type { StoryCard as Story } from '@/lib/types';
 import { StoryVisual } from './StoryVisual';
+import { CommitmentBadge } from './CommitmentBadge';
 import { FeedbackButtons } from './FeedbackButtons';
 import { useAuth } from './AuthProvider';
 
@@ -191,6 +192,15 @@ export function StoryCard({ story, rank, variant = 'default' }: Props) {
               </button>
             )}
           </div>
+
+          {/* Finance stories carry their commitment classification instead of a
+              separate section. Placed under the meter so the reader sees how firm
+              the claim is before the topics. */}
+          {story.commitment && (
+            <div className="mt-2">
+              <CommitmentBadge commitment={story.commitment} />
+            </div>
+          )}
 
           {!isCompact && story.topics.length > 0 && (
             <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 font-mono text-[11.5px] text-ink-500 dark:text-ink-400">

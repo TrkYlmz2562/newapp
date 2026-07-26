@@ -14,6 +14,10 @@ const SHORTCUTS: { category: ContentCategory; href: string }[] = [
   { category: 'Ai', href: '/explore?category=Ai' },
   { category: 'Software', href: '/explore?category=Software' },
   { category: 'Startup', href: '/explore?category=Startup' },
+  // Finance is a chip like the rest, not a tab. Only grounded finance stories
+  // reach the feed at all — see StoryFilters on the server — so this shows what
+  // was actually decided rather than everything with a money word in it.
+  { category: 'Finance', href: '/explore?category=Finance' },
   { category: 'OpenSource', href: '/explore?category=OpenSource' },
 ];
 

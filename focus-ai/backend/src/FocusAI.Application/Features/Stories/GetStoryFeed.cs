@@ -53,7 +53,10 @@ public sealed class GetStoryFeedQueryHandler(
 
         var baseQuery = db.Stories
             .AsNoTracking()
-            .Where(s => s.Status == StoryStatus.Published);
+            .Where(s => s.Status == StoryStatus.Published)
+            // Finance arrives here as one category among many, so it also has to
+            // clear the commitment bar — see StoryFilters.
+            .Where(StoryFilters.VisibleToReaders);
 
         if (request.Category is { } category)
         {

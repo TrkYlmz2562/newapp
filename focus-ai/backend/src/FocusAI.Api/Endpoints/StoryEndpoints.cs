@@ -1,6 +1,5 @@
 using FocusAI.Application.Common.Models;
 using FocusAI.Application.Dtos;
-using FocusAI.Application.Features.Finance;
 using FocusAI.Application.Features.Ask;
 using FocusAI.Application.Features.Catalog;
 using FocusAI.Application.Features.Interactions;
@@ -137,22 +136,6 @@ public static class StoryEndpoints
                 "bir blog 10 günde bayat değildir, saatte bir yazan bir ajans öyledir.")
             .Produces<SourceHealthReportDto>()
             .AllowAnonymous();
-
-        app.MapGet("/api/finance", async (
-                [FromQuery] bool? conditional,
-                [FromQuery] int? take,
-                ISender sender,
-                CancellationToken ct) =>
-                Results.Ok(await sender.Send(
-                    new GetFinanceFeedQuery(conditional ?? false, take ?? 40), ct)))
-            .WithTags("Finance")
-            .WithSummary("Resmen karara bağlanmış finans gelişmeleri.")
-            .WithDescription(
-                "Yalnızca gerçekleşmiş, bağlayıcı belgeye dayanan veya yetkili merciin " +
-                "kendi duyurduğu tarihli gelişmeleri döndürür. conditional=true, adı konmuş " +
-                "bir onayı bekleyen gelişmeleri verir. Yatırım tavsiyesi değildir.")
-            .AllowAnonymous()
-            .Produces<FinanceFeedDto>();
 
         return app;
     }
