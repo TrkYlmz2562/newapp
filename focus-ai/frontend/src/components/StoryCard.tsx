@@ -38,7 +38,8 @@ export function StoryCard({ story, rank, variant = 'default' }: Props) {
   const [busy, setBusy] = useState(false);
 
   const toggleSave = async (event: React.MouseEvent) => {
-    // The card is a link; saving must not navigate.
+    // The link is a sibling overlay now, not an ancestor, so nothing would bubble
+    // to it. Kept as a guard in case this button is ever nested in one again.
     event.preventDefault();
     event.stopPropagation();
 
@@ -81,8 +82,25 @@ export function StoryCard({ story, rank, variant = 'default' }: Props) {
   const tone = METER_TONE[trustBand(story.trustScore).tone];
 
   return (
-    <article className="card animate-fade-up overflow-hidden">
-      <Link href={`/story/${story.slug}`} className="block">
+    <article className="card animate-fade-up relative overflow-hidden">
+      {/*
+        The whole card navigates, but the link is an overlay rather than a wrapper.
+        Wrapping put <button> elements inside an <a>, which is invalid HTML and had
+        two real consequences on a phone: iOS raised its "Open Link / Copy Link"
+        sheet when the reader long-pressed a button, and every tap on a control had
+        to be cancelled by hand to stop it navigating.
+
+        Now the link sits underneath, the content above it ignores pointer events so
+        taps fall through, and each control opts back in. The accessible name has to
+        be given explicitly — an empty overlay would otherwise be an unnamed link.
+      */}
+      <Link
+        href={`/story/${story.slug}`}
+        className="absolute inset-0 z-0"
+        aria-label={story.title}
+      />
+
+      <div className="pointer-events-none relative z-10">
         {/* Terminal title bar */}
         <div className="flex items-center gap-2 border-b border-[#1b2534] bg-[#0c1017] px-3 py-2 font-mono text-[11px] text-[#8aa0bd]">
           <span
@@ -166,7 +184,7 @@ export function StoryCard({ story, rank, variant = 'default' }: Props) {
                 storyId={story.id}
                 initial={story.feedback}
                 surface="card"
-                className="-my-1"
+                className="pointer-events-auto -my-1"
               />
             )}
             {user && (
@@ -176,7 +194,7 @@ export function StoryCard({ story, rank, variant = 'default' }: Props) {
                 disabled={busy}
                 aria-pressed={saved}
                 aria-label={saved ? 'Kayıtlardan çıkar' : 'Kaydet'}
-                className={`tap-row -my-1 rounded-lg p-1.5 transition hover:bg-ink-100 dark:hover:bg-ink-800 ${
+                className={`tap-row pointer-events-auto -my-1 rounded-lg p-1.5 transition hover:bg-ink-100 dark:hover:bg-ink-800 ${
                   saved ? 'text-focus-600 dark:text-focus-400' : ''
                 }`}
               >
@@ -218,7 +236,7 @@ export function StoryCard({ story, rank, variant = 'default' }: Props) {
             <p className="mt-2 font-mono text-[11px] italic text-ink-400 dark:text-ink-500">{story.reason}</p>
           )}
         </div>
-      </Link>
+      </div>
     </article>
   );
 }
