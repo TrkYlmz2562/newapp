@@ -19,6 +19,14 @@ docker compose up --build
 - Web: <http://localhost:3000>
 - API + Swagger: <http://localhost:5210/swagger>
 
+> **Windows'ta çalıştırma.** Docker Desktop'ı kurun (WSL2 arka ucunu otomatik
+> ayarlar), Git for Windows'u kurun, ardından PowerShell'de:
+> `git clone -b claude/focus-ai-prd-35qcz9 https://github.com/TrkYlmz2562/newapp.git`
+> → `cd newapp\focus-ai` → `docker compose up --build`. Sonra tarayıcıda
+> `localhost:3000`. `.env` dosyası gerekmez — varsayılanlar çalışır. Repoda
+> `.gitattributes` satır sonlarını LF'ye zorladığı için build Windows'ta da
+> aynı çalışır.
+
 **API anahtarı gerekmez.** Bir LLM sağlayıcısı tanımlı değilse sistem yerel
 hash tabanlı embedding ve extractive (üretmeyen, alıntılayan) özet moduna
 düşer; ingestion → kümeleme → skorlama → yayınlama hattının tamamı yine çalışır

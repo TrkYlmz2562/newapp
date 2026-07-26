@@ -1,0 +1,29 @@
+# Force LF in the working tree for all text files.
+#
+# This repository is built and run inside Linux containers. On a Windows
+# checkout Git would otherwise convert line endings to CRLF, and a stray \r
+# breaks two things: shell here-docs / scripts run during the Docker build, and
+# the backslash line-continuations in the multi-line RUN steps of the
+# Dockerfiles. Normalising to LF keeps `docker compose up --build` working
+# identically on Windows, macOS and Linux.
+* text=auto eol=lf
+
+# Files that MUST stay Unix-formatted inside a container.
+*.sh        text eol=lf
+Dockerfile  text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.json      text eol=lf
+*.css       text eol=lf
+*.cs        text eol=lf
+*.ts        text eol=lf
+*.tsx       text eol=lf
+
+# Binary assets — never normalise or diff as text.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.ico   binary
+*.woff  binary
+*.woff2 binary
+*.pdf   binary
