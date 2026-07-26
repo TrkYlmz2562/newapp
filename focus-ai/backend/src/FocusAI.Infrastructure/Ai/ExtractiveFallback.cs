@@ -1,4 +1,5 @@
 using FocusAI.Application.Common.Interfaces;
+using FocusAI.Domain.Common;
 using FocusAI.Domain.Enums;
 using FocusAI.Domain.Text;
 
@@ -58,12 +59,16 @@ internal static class ExtractiveFallback
         {
             Title = context.Title,
             Dek = sentences.FirstOrDefault(),
-            Summary = Truncate(summary, 1200),
+            Summary = FieldLimits.Cap(summary, 1200)!,
             WhyItMatters = null,
             WhoIsAffected = null,
             // Deliberately not an invented recommendation — this path has no analysis.
             WhatShouldIDo = null,
-            KeyPoints = sentences.Skip(1).Take(3).Select(s => Truncate(s, 200)).ToList(),
+            // Word-boundary aware: a hard cut mid-token ("…absorb the co") reads
+            // as corrupted data rather than as an excerpt.
+            KeyPoints = sentences.Skip(1).Take(3)
+                .Select(sentence => FieldLimits.Cap(sentence, 240)!)
+                .ToList(),
             TopicSlugs = [],
             Category = GuessCategory($"{context.Title} {body}"),
             Importance = EstimateImportance(context),
@@ -105,10 +110,6 @@ internal static class ExtractiveFallback
     }
 
     /// <summary>
-    /// Regex-free relative-date parsing for the common Turkish and English
-    /// phrasings, so search still narrows by time with no model available.
-    /// </summary>
-    /// <summary>
     /// Phrases that carry a time constraint, longest first so "son bir ay" is
     /// matched before "son". Each maps to a lookback in days.
     /// </summary>
@@ -133,6 +134,10 @@ internal static class ExtractiveFallback
         "show me", "show all", "find all", "list all", "news about", "news", "all"
     ];
 
+    /// <summary>
+    /// Regex-free relative-date parsing for the common Turkish and English
+    /// phrasings, so search still narrows by time with no model available.
+    /// </summary>
     public static ParsedSearchQuery ParseQuery(string rawQuery, DateTimeOffset now)
     {
         var normalized = TextNormalizer.Normalize(rawQuery);
@@ -240,6 +245,4 @@ internal static class ExtractiveFallback
     private static bool Contains(string haystack, params string[] needles) =>
         needles.Any(needle => haystack.Contains(TextNormalizer.Normalize(needle), StringComparison.Ordinal));
 
-    private static string Truncate(string value, int maxLength) =>
-        value.Length <= maxLength ? value : value[..maxLength];
 }
