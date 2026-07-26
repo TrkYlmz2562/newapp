@@ -12,6 +12,7 @@ import {
   timeAgo,
 } from '@/lib/format';
 import type { StoryCard as Story } from '@/lib/types';
+import { StoryVisual } from './StoryVisual';
 import { TrustChip } from './TrustBadge';
 import { useAuth } from './AuthProvider';
 
@@ -49,24 +50,26 @@ export function StoryCard({ story, rank, variant = 'default' }: Props) {
   };
 
   const isHero = variant === 'hero';
+  const isCompact = variant === 'compact';
+
+  // A full-bleed preview banner at the top of the card, Twitter-style: the real
+  // image when we have one, a category illustration otherwise.
+  const bannerHeight = isHero ? 'h-48 sm:h-56' : isCompact ? 'h-28' : 'h-40 sm:h-44';
+  const emojiSize = isHero ? 'text-6xl' : isCompact ? 'text-4xl' : 'text-5xl';
 
   // Suppressed when it merely repeats the headline — see meaningful().
   const blurb = meaningful(story.summary, story.title) ?? meaningful(story.dek, story.title);
 
   return (
-    <article className={`card animate-fade-up ${isHero ? 'overflow-hidden' : ''}`}>
-      <Link href={`/story/${story.slug}`} className="block p-4 sm:p-5">
-        {isHero && story.heroImageUrl && (
-          /* eslint-disable-next-line @next/next/no-img-element -- hero images come
-             from arbitrary publisher domains; see next.config.mjs. */
-          <img
-            src={story.heroImageUrl}
-            alt=""
-            loading="lazy"
-            className="mb-4 -mx-4 -mt-4 h-44 w-[calc(100%+2rem)] object-cover sm:-mx-5 sm:-mt-5 sm:w-[calc(100%+2.5rem)]"
-          />
-        )}
+    <article className="card animate-fade-up overflow-hidden">
+      <Link href={`/story/${story.slug}`} className="block">
+        <StoryVisual
+          story={story}
+          className={`w-full ${bannerHeight}`}
+          emojiClassName={emojiSize}
+        />
 
+        <div className="p-4 sm:p-5">
         <header className="mb-2 flex flex-wrap items-center gap-2 text-xs text-ink-500 dark:text-ink-400">
           {rank !== undefined && (
             <span className="grid h-5 w-5 place-items-center rounded-md bg-ink-900 text-[11px] font-bold text-white dark:bg-ink-100 dark:text-ink-900">
@@ -146,6 +149,7 @@ export function StoryCard({ story, rank, variant = 'default' }: Props) {
         {story.reason && (
           <p className="mt-2 text-xs italic text-ink-400 dark:text-ink-500">{story.reason}</p>
         )}
+        </div>
       </Link>
     </article>
   );
@@ -153,12 +157,15 @@ export function StoryCard({ story, rank, variant = 'default' }: Props) {
 
 export function StoryCardSkeleton() {
   return (
-    <div className="card space-y-3 p-5">
-      <div className="skeleton h-4 w-32" />
-      <div className="skeleton h-5 w-full" />
-      <div className="skeleton h-5 w-4/5" />
-      <div className="skeleton h-3 w-full" />
-      <div className="skeleton h-3 w-3/4" />
+    <div className="card overflow-hidden">
+      <div className="skeleton h-40 w-full rounded-none" />
+      <div className="space-y-3 p-5">
+        <div className="skeleton h-4 w-32" />
+        <div className="skeleton h-5 w-full" />
+        <div className="skeleton h-5 w-4/5" />
+        <div className="skeleton h-3 w-full" />
+        <div className="skeleton h-3 w-3/4" />
+      </div>
     </div>
   );
 }

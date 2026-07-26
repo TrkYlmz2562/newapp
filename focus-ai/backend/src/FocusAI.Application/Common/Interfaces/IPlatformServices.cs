@@ -114,10 +114,20 @@ public interface IFeedAdapterResolver
     IFeedAdapter Resolve(Source source);
 }
 
-/// <summary>Pulls readable body text out of an article page.</summary>
+/// <summary>
+/// What a single page fetch yields: the readable body text and the best lead
+/// image we could find (og:image / twitter:image / a significant inline image).
+/// Either may be null — extraction is opportunistic and never fails the item.
+/// </summary>
+public sealed record ExtractedArticle(string? Text, string? ImageUrl)
+{
+    public static readonly ExtractedArticle Empty = new(null, null);
+}
+
+/// <summary>Pulls readable body text and a lead image out of an article page.</summary>
 public interface IContentExtractor
 {
-    Task<string?> ExtractAsync(string url, CancellationToken cancellationToken = default);
+    Task<ExtractedArticle> ExtractAsync(string url, CancellationToken cancellationToken = default);
 }
 
 public sealed record SearchHit(Guid StoryId, double Score);

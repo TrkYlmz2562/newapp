@@ -63,6 +63,26 @@ export const CATEGORY_EMOJI: Record<ContentCategory, string> = {
   Product: '📦',
 };
 
+/**
+ * Two-stop gradients per category, used to draw a generated illustration when a
+ * story has no real image. Kept as explicit hex pairs (not Tailwind classes) so
+ * they render via inline styles — no purge surprises — and read well on both the
+ * light and dark card, since the tile is always a saturated colour with white marks.
+ */
+export const CATEGORY_ART: Record<ContentCategory, [string, string]> = {
+  Unknown: ['#64748b', '#334155'],
+  Ai: ['#7c3aed', '#c026d3'],
+  Software: ['#2563eb', '#1636e1'],
+  OpenSource: ['#059669', '#0f766e'],
+  Startup: ['#f97316', '#e11d48'],
+  Science: ['#0891b2', '#4338ca'],
+  Career: ['#0d9488', '#0369a1'],
+  Tools: ['#d97706', '#b45309'],
+  Security: ['#e11d48', '#881337'],
+  Hardware: ['#475569', '#1e293b'],
+  Product: ['#db2777', '#9333ea'],
+};
+
 export const HYPE_LABELS: Record<HypeLevel, string> = {
   Understated: 'Hak ettiğinden az konuşuluyor',
   Accurate: 'Gerçekçi ölçüde konuşuluyor',

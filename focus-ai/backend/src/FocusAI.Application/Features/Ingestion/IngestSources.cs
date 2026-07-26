@@ -188,13 +188,13 @@ public sealed class IngestSourcesCommandHandler(
 
         // Extraction happens before hashing so de-duplication compares full
         // articles rather than teaser text, which two outlets often share verbatim.
-        var bodies = await ExtractBodiesAsync(accepted, cancellationToken);
+        var pages = await ExtractPagesAsync(accepted, cancellationToken);
 
         foreach (var (item, canonical, publishedAt) in accepted)
         {
-            var content = bodies.TryGetValue(canonical, out var extracted) && !string.IsNullOrWhiteSpace(extracted)
-                ? extracted
-                : item.Content;
+            pages.TryGetValue(canonical, out var page);
+
+            var content = !string.IsNullOrWhiteSpace(page?.Text) ? page!.Text : item.Content;
 
             var text = string.IsNullOrWhiteSpace(content) ? item.Excerpt : content;
 
@@ -208,7 +208,10 @@ public sealed class IngestSourcesCommandHandler(
                 Author = Truncate(item.Author, 200),
                 Excerpt = Truncate(item.Excerpt, 4000),
                 Content = Truncate(content, 50_000),
-                ImageUrl = item.ImageUrl,
+                // Feed-provided media wins (it is the publisher's explicit choice);
+                // the page's og:image is the fallback. A story without either is fine
+                // — the reader still sees it, with a category illustration on the card.
+                ImageUrl = PickImage(item.ImageUrl, page?.ImageUrl),
                 Language = source.Language,
                 PublishedAt = publishedAt,
                 FetchedAt = now,
@@ -225,15 +228,18 @@ public sealed class IngestSourcesCommandHandler(
     }
 
     /// <summary>
-    /// Fetches article bodies for items whose feed payload was only a teaser.
+    /// Fetches article pages for items whose feed payload was only a teaser, taking
+    /// both the body text and — for free, from the same fetch — a lead image. The
+    /// fetch is NOT triggered just to hunt for an image: a full-text feed that omits
+    /// an image is left as-is rather than hammering the publisher for a picture.
     /// Failures are silent by design — the feed excerpt remains the floor, and a
     /// paywalled or unreachable page must not cost us the item.
     /// </summary>
-    private async Task<Dictionary<string, string?>> ExtractBodiesAsync(
+    private async Task<Dictionary<string, ExtractedArticle>> ExtractPagesAsync(
         IReadOnlyList<(FeedItem Item, string Canonical, DateTimeOffset PublishedAt)> accepted,
         CancellationToken cancellationToken)
     {
-        var results = new Dictionary<string, string?>(StringComparer.Ordinal);
+        var results = new Dictionary<string, ExtractedArticle>(StringComparer.Ordinal);
 
         if (!settings.Value.ExtractFullContent)
         {
@@ -256,13 +262,13 @@ public sealed class IngestSourcesCommandHandler(
             await throttle.WaitAsync(cancellationToken);
             try
             {
-                var body = await contentExtractor.ExtractAsync(entry.Item.Url, cancellationToken);
-                return (entry.Canonical, Body: body);
+                var page = await contentExtractor.ExtractAsync(entry.Item.Url, cancellationToken);
+                return (entry.Canonical, Page: page);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 logger.LogDebug(ex, "FocusAI content extraction failed for {Url}", entry.Item.Url);
-                return (entry.Canonical, Body: null);
+                return (entry.Canonical, Page: ExtractedArticle.Empty);
             }
             finally
             {
@@ -270,18 +276,27 @@ public sealed class IngestSourcesCommandHandler(
             }
         });
 
-        foreach (var (canonical, body) in await Task.WhenAll(tasks))
+        foreach (var (canonical, page) in await Task.WhenAll(tasks))
         {
-            results[canonical] = body;
+            results[canonical] = page;
         }
 
         logger.LogDebug(
-            "FocusAI extracted {Extracted}/{Attempted} article bodies",
-            results.Count(r => !string.IsNullOrWhiteSpace(r.Value)),
+            "FocusAI extracted {Bodies} bodies and {Images} images from {Attempted} pages",
+            results.Count(r => !string.IsNullOrWhiteSpace(r.Value.Text)),
+            results.Count(r => !string.IsNullOrWhiteSpace(r.Value.ImageUrl)),
             needing.Count);
 
         return results;
     }
+
+    /// <summary>First usable image URL: an absolute http(s) link that fits the column.</summary>
+    private static string? PickImage(params string?[] candidates) =>
+        candidates.FirstOrDefault(candidate =>
+            !string.IsNullOrWhiteSpace(candidate) &&
+            candidate.Length <= 2000 &&
+            (candidate.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+             candidate.StartsWith("https://", StringComparison.OrdinalIgnoreCase)));
 
     private static string ComputeHash(string title, string? body)
     {

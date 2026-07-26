@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
 import { ErrorState } from '@/components/Shell';
 import { StoryCard, StoryCardSkeleton } from '@/components/StoryCard';
+import { StoryVisual } from '@/components/StoryVisual';
 import { TrustPanel } from '@/components/TrustBadge';
 import { api } from '@/lib/api';
 import {
@@ -159,10 +160,11 @@ export default function StoryPage() {
         {dek && <p className="text-base text-ink-600 dark:text-ink-300">{dek}</p>}
       </header>
 
-      {story.heroImageUrl && (
-        /* eslint-disable-next-line @next/next/no-img-element */
-        <img src={story.heroImageUrl} alt="" className="w-full rounded-2xl object-cover" loading="lazy" />
-      )}
+      <StoryVisual
+        story={story}
+        className="h-56 w-full rounded-2xl sm:h-72"
+        emojiClassName="text-7xl"
+      />
 
       {story.personalNote && (
         <aside className="rounded-2xl border-l-4 border-focus-500 bg-focus-50 p-4 dark:bg-focus-900/30">
