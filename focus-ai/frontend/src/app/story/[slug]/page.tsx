@@ -6,7 +6,7 @@ import { useParams } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
 import { ErrorState } from '@/components/Shell';
 import { StoryCard, StoryCardSkeleton } from '@/components/StoryCard';
-import { CommitmentPanel } from '@/components/CommitmentBadge';
+import { CommitmentPanel, CorroborationNote } from '@/components/CommitmentBadge';
 import { CoverageComparison } from '@/components/CoverageComparison';
 import { FeedbackButtons } from '@/components/FeedbackButtons';
 import { ShareButton } from '@/components/ShareButton';
@@ -258,7 +258,16 @@ export default function StoryPage() {
         </section>
       )}
 
-      {story.commitment && <CommitmentPanel commitment={story.commitment} />}
+      {story.commitment ? (
+        <CommitmentPanel commitment={story.commitment} />
+      ) : (
+        story.category === 'Finance' && (
+          <CorroborationNote
+            sourceCount={story.sources.length}
+            hasOfficialSource={story.sources.some((source) => source.isOfficial)}
+          />
+        )
+      )}
 
       <CoverageComparison
         sources={story.sources}

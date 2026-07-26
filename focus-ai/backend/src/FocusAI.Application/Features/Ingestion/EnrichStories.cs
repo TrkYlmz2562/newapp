@@ -361,6 +361,12 @@ public sealed class EnrichStoriesCommandHandler(
             return;
         }
 
+        // Deterministic and unconditional: this is what stands in for the classifier
+        // when no model is configured, so it must not depend on the call below
+        // succeeding. Reads the text the reader will actually see.
+        story.HasEvidentialClaim = CommitmentLexicon.HasEvidentialSuffix(
+            CommitmentLexicon.Fold($"{story.Title} {story.Dek} {story.Summary?.Summary}"));
+
         StoryCommitment? evaluated;
 
         try

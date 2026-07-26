@@ -52,6 +52,22 @@ public class Story : AuditableEntity
 
     public int OfficialSourceCount { get; set; }
 
+    /// <summary>
+    /// True when the story's own text reports the claim rather than asserting it —
+    /// the Turkish -mış evidential, "iddia edildi", "öğrenildi".
+    /// </summary>
+    /// <remarks>
+    /// Set deterministically from the text, with no model involved, which is the
+    /// whole point: it is the one hearsay signal that still works when no LLM is
+    /// configured. Corroboration alone cannot replace it — three outlets repeating
+    /// the same rumour corroborate the rumour, not the fact — so a finance story
+    /// that reaches the feed on source count alone still has to clear this.
+    ///
+    /// Only meaningful on Turkish text; an English source carries no -mış, so the
+    /// check passes trivially there and corroboration does the work instead.
+    /// </remarks>
+    public bool HasEvidentialClaim { get; set; }
+
     /// <summary>0-100 confidence rating (PRD section 5.4).</summary>
     public int TrustScore { get; set; }
 

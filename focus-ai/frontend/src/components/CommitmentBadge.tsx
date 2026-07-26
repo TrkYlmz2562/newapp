@@ -89,3 +89,36 @@ export function CommitmentPanel({ commitment }: { commitment: Commitment }) {
     </section>
   );
 }
+
+/**
+ * Shown on a finance story that reached the feed on corroboration rather than
+ * classification — the no-LLM path.
+ *
+ * Saying so matters. The absence of a commitment panel would otherwise read as
+ * "nothing to report here", when the truth is narrower and more useful: nobody
+ * graded how firm this is, and it is in front of you because several independent
+ * outlets filed the same thing. That is a real but weaker basis, and the reader
+ * should be told which one they are getting.
+ */
+export function CorroborationNote({
+  sourceCount,
+  hasOfficialSource,
+}: {
+  sourceCount: number;
+  hasOfficialSource: boolean;
+}) {
+  return (
+    <section className="card p-4 sm:p-5">
+      <h2 className="mb-1 text-sm font-semibold text-ink-800 dark:text-ink-100">
+        Bu haber neden burada?
+      </h2>
+      <p className="text-[13px] leading-relaxed text-ink-600 dark:text-ink-300">
+        {hasOfficialSource
+          ? 'Gelişme resmî kaynağın kendi duyurusuna dayanıyor — ikinci elden bir aktarım değil.'
+          : `Aynı gelişmeyi ${sourceCount} bağımsız kaynak bildirdi.`}{' '}
+        Ne kadar kesinleştiğine dair bir sınıflandırma yapılmadı, bu yüzden burada
+        yorum da yok — yalnızca kaynakların bildirdiği var.
+      </p>
+    </section>
+  );
+}

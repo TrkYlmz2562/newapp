@@ -75,6 +75,66 @@ public class StoryVisibilityTests
         Assert.False(Visible(story));
     }
 
+    private static Story Corroborated(int sources, int official = 0, bool evidential = false) => new()
+    {
+        Title = "Merkez Bankası faiz kararını açıkladı",
+        Slug = "faiz",
+        Category = ContentCategory.Finance,
+        Commitment = null,
+        SourceCount = sources,
+        OfficialSourceCount = official,
+        HasEvidentialClaim = evidential
+    };
+
+    [Fact]
+    public void Two_independent_outlets_are_enough_without_any_classification()
+    {
+        // The path that keeps finance alive with no LLM configured. The classifier
+        // is the only step in the pipeline that needs a model; without this the
+        // category would be permanently empty rather than merely unannotated.
+        Assert.True(Visible(Corroborated(sources: 2)));
+    }
+
+    [Fact]
+    public void One_outlet_alone_is_not_corroboration()
+    {
+        Assert.False(Visible(Corroborated(sources: 1)));
+    }
+
+    [Fact]
+    public void An_official_source_needs_no_second_outlet()
+    {
+        // A central bank publishing its own rate decision is the record itself, not
+        // a claim about someone else, so there is nothing to corroborate it against.
+        Assert.True(Visible(Corroborated(sources: 1, official: 1)));
+    }
+
+    [Fact]
+    public void Corroborated_hearsay_is_still_hearsay()
+    {
+        // The reason the evidential check exists: three outlets repeating the same
+        // rumour corroborate the rumour, not the fact. Deterministic, so it still
+        // works with no model — which is exactly the situation this path is for.
+        Assert.False(Visible(Corroborated(sources: 3, evidential: true)));
+    }
+
+    [Fact]
+    public void A_classification_overrides_the_corroboration_path()
+    {
+        // A single-source story the model graded as an official commitment gets in;
+        // a well-corroborated one it graded as an unverified claim does not. The
+        // model read the text, so its verdict is the better evidence.
+        var classified = Finance(CommitmentTier.OfficialCommitment);
+        classified.SourceCount = 1;
+
+        var rejected = Finance(CommitmentTier.UnverifiedClaim);
+        rejected.SourceCount = 5;
+        rejected.OfficialSourceCount = 2;
+
+        Assert.True(Visible(classified));
+        Assert.False(Visible(rejected));
+    }
+
     [Theory]
     [InlineData(ContentCategory.Ai)]
     [InlineData(ContentCategory.Security)]
