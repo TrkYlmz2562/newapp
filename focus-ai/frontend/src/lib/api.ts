@@ -32,6 +32,23 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Human-readable message for a caught error.
+ *
+ * A validation failure carries per-field messages in `fieldErrors`; showing only
+ * the generic "Bir veya daha fazla doğrulama hatası oluştu." leaves the user
+ * guessing which field was wrong. This surfaces the actual field messages.
+ */
+export function describeError(error: unknown, fallback: string): string {
+  if (error instanceof ApiError) {
+    if (error.fieldErrors && Object.keys(error.fieldErrors).length > 0) {
+      return Object.values(error.fieldErrors).flat().join(' ');
+    }
+    return error.message;
+  }
+  return fallback;
+}
+
 export const tokenStore = {
   get access(): string | null {
     if (typeof window === 'undefined') return null;

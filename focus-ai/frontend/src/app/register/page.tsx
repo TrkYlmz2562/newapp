@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/components/AuthProvider';
-import { ApiError, api } from '@/lib/api';
+import { api, describeError } from '@/lib/api';
 import type { Topic } from '@/lib/types';
 
 export default function RegisterPage() {
@@ -35,7 +35,9 @@ export default function RegisterPage() {
       await register({ email, password, displayName, interestSlugs: [...selected] });
       router.push('/');
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : 'Kayıt tamamlanamadı.');
+      // Back to the account step so the user can fix the offending field —
+      // and now the message names which field (e.g. "Şifre en az 8 karakter olmalı.").
+      setError(describeError(caught, 'Kayıt tamamlanamadı.'));
       setStep('account');
     } finally {
       setBusy(false);

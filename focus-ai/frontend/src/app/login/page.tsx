@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useAuth } from '@/components/AuthProvider';
-import { ApiError } from '@/lib/api';
+import { describeError } from '@/lib/api';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -26,7 +26,7 @@ export default function LoginPage() {
       await login(email, password);
       router.push('/');
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : 'Giriş yapılamadı.');
+      setError(describeError(caught, 'Giriş yapılamadı.'));
     } finally {
       setBusy(false);
     }
