@@ -88,7 +88,16 @@ export function StoryCard({ story, rank, variant = 'default' }: Props) {
           <span>
             focus:~/<span className="font-semibold text-[#cdd8e8]">{CATEGORY_SLUG[story.category]}</span>
           </span>
-          <span className="ml-auto text-[#5f7089]">{pluralizeSources(story.sourceCount)}</span>
+          <span className="ml-auto flex items-center gap-2 text-[#5f7089]">
+            {story.isRead && (
+              // The ranker quarters the score of a story you have opened. Saying so
+              // is what turns "why is this so far down" into an answer.
+              <span className="text-[#7f9a86]" title="Bu haberi okudun; akışta aşağı alınır">
+                ✓ okundu
+              </span>
+            )}
+            {pluralizeSources(story.sourceCount)}
+          </span>
         </div>
 
         <StoryVisual
@@ -111,7 +120,11 @@ export function StoryCard({ story, rank, variant = 'default' }: Props) {
           </div>
 
           <h3
-            className={`mt-2.5 font-serif font-semibold leading-tight tracking-tight text-ink-900 dark:text-ink-50 ${headlineSize}`}
+            className={`mt-2.5 font-serif font-semibold leading-tight tracking-tight ${headlineSize} ${
+              story.isRead
+                ? 'text-ink-500 dark:text-ink-400'
+                : 'text-ink-900 dark:text-ink-50'
+            }`}
           >
             {story.title}
           </h3>

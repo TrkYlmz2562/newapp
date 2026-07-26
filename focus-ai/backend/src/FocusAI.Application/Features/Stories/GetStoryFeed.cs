@@ -83,7 +83,7 @@ public sealed class GetStoryFeedQueryHandler(
                 .Select(StoryProjections.ToCard())
                 .ToPagedResultAsync(page, pageSize, cancellationToken);
 
-            return await AttachBookmarks(result, userId, cancellationToken);
+            return await AttachReaderState(result, userId, cancellationToken);
         }
 
         var snapshot = await readerContextFactory.BuildAsync(userId, cancellationToken);
@@ -153,10 +153,15 @@ public sealed class GetStoryFeedQueryHandler(
             TotalCount = ranked.Count
         };
 
-        return await AttachBookmarks(paged, userId, cancellationToken);
+        return await AttachReaderState(paged, userId, cancellationToken);
     }
 
-    private async Task<PagedResult<StoryCardDto>> AttachBookmarks(
+    /// <summary>
+    /// Stamps the per-reader flags after projection. They cannot live in
+    /// <see cref="StoryProjections.ToCard"/> because a `with` expression is
+    /// illegal inside an expression tree.
+    /// </summary>
+    private async Task<PagedResult<StoryCardDto>> AttachReaderState(
         PagedResult<StoryCardDto> result,
         Guid? userId,
         CancellationToken cancellationToken)
@@ -167,22 +172,40 @@ public sealed class GetStoryFeedQueryHandler(
         }
 
         var ids = result.Items.Select(i => i.Id).ToList();
+
         var bookmarked = await db.Bookmarks
             .AsNoTracking()
             .Where(b => b.UserId == userId && ids.Contains(b.StoryId))
             .Select(b => b.StoryId)
             .ToListAsync(cancellationToken);
 
-        if (bookmarked.Count == 0)
+        // Opening the story is what "read" means here. It is also what the ranker
+        // penalises, so the badge explains the demotion rather than contradicting it.
+        var read = await db.Interactions
+            .AsNoTracking()
+            .Where(i => i.UserId == userId &&
+                        ids.Contains(i.StoryId) &&
+                        (i.Type == InteractionType.Open || i.Type == InteractionType.ReadComplete))
+            .Select(i => i.StoryId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        if (bookmarked.Count == 0 && read.Count == 0)
         {
             return result;
         }
 
-        var set = bookmarked.ToHashSet();
+        var saved = bookmarked.ToHashSet();
+        var seen = read.ToHashSet();
+
         return result with
         {
             Items = result.Items
-                .Select(i => set.Contains(i.Id) ? i with { IsBookmarked = true } : i)
+                .Select(i => i with
+                {
+                    IsBookmarked = i.IsBookmarked || saved.Contains(i.Id),
+                    IsRead = seen.Contains(i.Id)
+                })
                 .ToList()
         };
     }

@@ -3,6 +3,7 @@ import './globals.css';
 import { BottomNav } from '@/components/BottomNav';
 import { AuthProvider } from '@/components/AuthProvider';
 import { ServiceWorkerRegistrar } from '@/components/ServiceWorkerRegistrar';
+import { themeBootstrapScript } from '@/components/ThemeToggle';
 
 export const metadata: Metadata = {
   title: {
@@ -42,6 +43,13 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="tr" suppressHydrationWarning>
+      <head>
+        {/*
+          Blocking on purpose: the theme class must be on <html> before the first
+          paint, or every load flashes light before React catches up.
+        */}
+        <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
+      </head>
       <body className="min-h-dvh">
         <AuthProvider>
           <div className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col">

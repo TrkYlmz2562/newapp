@@ -73,6 +73,8 @@ export interface StoryCard {
   readingMinutes: number;
   topics: Topic[];
   isBookmarked: boolean;
+  /** This reader already opened it — the reason the ranker pushed it down. */
+  isRead: boolean;
   reason?: string | null;
 }
 

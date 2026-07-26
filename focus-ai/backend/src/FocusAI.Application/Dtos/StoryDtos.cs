@@ -72,6 +72,12 @@ public sealed record StoryCardDto
 
     public bool IsBookmarked { get; init; }
 
+    /// <summary>
+    /// True when this reader has already opened the story. The ranker demotes
+    /// seen stories; showing it is what stops that looking arbitrary.
+    /// </summary>
+    public bool IsRead { get; init; }
+
     /// <summary>Why this card is in front of this reader — filled by ranked endpoints only.</summary>
     public string? Reason { get; init; }
 }

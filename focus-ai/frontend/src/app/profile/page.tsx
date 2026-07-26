@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
 import { ErrorState, PageHeader, SignInPrompt } from '@/components/Shell';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { api } from '@/lib/api';
 import type { Profile, Topic } from '@/lib/types';
 
@@ -137,6 +138,14 @@ export default function ProfilePage() {
               </p>
             </div>
           </div>
+        </section>
+
+        <section className="card p-5">
+          <h2 className="mb-1 text-sm font-semibold text-ink-800 dark:text-ink-100">Görünüm</h2>
+          <p className="mb-3 text-xs text-ink-500 dark:text-ink-400">
+            Varsayılan olarak telefonunun ayarını izler.
+          </p>
+          <ThemeToggle />
         </section>
 
         {/* PRD section 15: kept deliberately plain — progress, not pressure. */}
