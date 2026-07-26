@@ -44,6 +44,12 @@ const config: Config = {
       },
       fontFamily: {
         sans: ['var(--font-sans)', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
+        /*
+         * Pinned, because the default `ui-serif` stack resolved to a different
+         * face on every platform — see the note in layout.tsx. Georgia stays as
+         * the fallback: it is the closest metric match, so the swap is invisible.
+         */
+        serif: ['var(--font-serif)', 'Georgia', 'serif'],
       },
       maxWidth: {
         reader: '46rem',
