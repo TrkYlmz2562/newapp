@@ -6,6 +6,7 @@ import { useAuth } from '@/components/AuthProvider';
 import { EmptyState, ErrorState, PageHeader, SearchBar } from '@/components/Shell';
 import { StoryCard, StoryCardSkeleton } from '@/components/StoryCard';
 import { api } from '@/lib/api';
+import { trUpper } from '@/lib/format';
 import type { AskResult, StoryCard as Story } from '@/lib/types';
 
 const EXAMPLES = [
@@ -77,7 +78,7 @@ function SearchContent() {
 
       {!query && (
         <div className="space-y-2 px-4 sm:px-5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">Örnekler</p>
+          <p className="text-xs font-semibold tracking-wide text-ink-400">{trUpper('Örnekler')}</p>
           {EXAMPLES.map((example) => (
             <a
               key={example}

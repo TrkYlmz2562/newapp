@@ -10,6 +10,7 @@ import {
   meaningful,
   pluralizeSources,
   timeAgo,
+  trUpper,
   trustBand,
 } from '@/lib/format';
 import { forgetOffline, saveForOffline } from '@/lib/offline';
@@ -115,9 +116,9 @@ export function StoryCard({ story, rank, variant = 'default' }: Props) {
 
         <div className="p-4 sm:p-5">
           {/* Command-line kicker */}
-          <div className="flex items-center font-mono text-[11px] uppercase tracking-[0.13em] text-ink-500 dark:text-ink-400">
+          <div className="flex items-center font-mono text-[11px] tracking-[0.13em] text-ink-500 dark:text-ink-400">
             <span className="mr-[7px] font-bold text-focus-600 dark:text-focus-400">›</span>
-            {CATEGORY_LABELS[story.category]} · {timeAgo(story.publishedAt)}
+            {trUpper(CATEGORY_LABELS[story.category])} · {trUpper(timeAgo(story.publishedAt))}
             {isHero && (
               <span
                 className="ml-1.5 inline-block h-[13px] w-[7px] translate-y-[2px] animate-blink bg-focus-600 motion-reduce:hidden dark:bg-focus-400"
@@ -144,7 +145,7 @@ export function StoryCard({ story, rank, variant = 'default' }: Props) {
 
           {isHero && story.whyItMatters && (
             <p className="mt-3 rounded-lg border-l-2 border-focus-500 bg-focus-50 p-3 font-serif text-sm text-focus-900 dark:bg-focus-900/30 dark:text-focus-100">
-              <span className="font-sans text-xs font-semibold uppercase tracking-wide">Neden önemli — </span>
+              <span className="font-sans text-xs font-semibold tracking-wide">{trUpper('Neden önemli')} — </span>
               {story.whyItMatters}
             </p>
           )}

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import { EmptyState, ErrorState, PageHeader, SignInPrompt } from '@/components/Shell';
 import { api } from '@/lib/api';
-import { formatDate } from '@/lib/format';
+import { formatDate, trUpper } from '@/lib/format';
 import type { LearningSuggestion } from '@/lib/types';
 
 const KIND_ICONS: Record<string, string> = {
@@ -102,7 +102,7 @@ export default function LearningPage() {
             <h2 className="text-xl font-bold text-ink-900 dark:text-ink-50">{today.title}</h2>
 
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">Neden?</p>
+              <p className="text-xs font-semibold tracking-wide text-ink-400">{trUpper('Neden?')}</p>
               <p className="mt-1 text-sm leading-relaxed text-ink-700 dark:text-ink-300">
                 {today.rationale}
               </p>

@@ -25,6 +25,7 @@ import {
   meaningful,
   readingTime,
   timeAgo,
+  trUpper,
 } from '@/lib/format';
 import type { StoryDetail } from '@/lib/types';
 
@@ -193,8 +194,8 @@ export default function StoryPage() {
 
       {story.personalNote && (
         <aside className="rounded-2xl border-l-4 border-focus-500 bg-focus-50 p-4 dark:bg-focus-900/30">
-          <p className="text-xs font-semibold uppercase tracking-wide text-focus-700 dark:text-focus-300">
-            Senin stack&apos;in için
+          <p className="text-xs font-semibold tracking-wide text-focus-700 dark:text-focus-300">
+            {trUpper('Senin stack\'in için')}
           </p>
           <p className="mt-1 text-sm text-focus-900 dark:text-focus-100">{story.personalNote}</p>
         </aside>
@@ -202,8 +203,8 @@ export default function StoryPage() {
 
       {summary && (
         <section className="prose-reader">
-          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-ink-500 dark:text-ink-400">
-            Özet
+          <h2 className="mb-2 text-sm font-semibold tracking-wide text-ink-500 dark:text-ink-400">
+            {trUpper('Özet')}
           </h2>
           <p>{summary}</p>
         </section>
@@ -318,8 +319,8 @@ function QaBlock({ title, body }: { title: string; body?: string | null }) {
 
   return (
     <section className="card p-4">
-      <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-500 dark:text-ink-400">
-        {title}
+      <h3 className="mb-1.5 text-xs font-semibold tracking-wide text-ink-500 dark:text-ink-400">
+        {trUpper(title)}
       </h3>
       <p className="text-sm leading-relaxed text-ink-700 dark:text-ink-300">{body}</p>
     </section>
@@ -329,7 +330,7 @@ function QaBlock({ title, body }: { title: string; body?: string | null }) {
 function Verdict({ term, value }: { term: string; value: string }) {
   return (
     <div className="rounded-xl bg-ink-50 p-3 dark:bg-ink-800/60">
-      <dt className="text-[11px] uppercase tracking-wide text-ink-500 dark:text-ink-400">{term}</dt>
+      <dt className="text-[11px] tracking-wide text-ink-500 dark:text-ink-400">{trUpper(term)}</dt>
       <dd className="mt-0.5 text-sm font-medium text-ink-800 dark:text-ink-100">{value}</dd>
     </div>
   );

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { CATEGORY_ACCENT, CATEGORY_ICON, CATEGORY_LABELS } from '@/lib/format';
+import { CATEGORY_ACCENT, CATEGORY_ICON, CATEGORY_LABELS, trUpper } from '@/lib/format';
 import type { ContentCategory, Topic } from '@/lib/types';
 
 interface VisualStory {
@@ -125,8 +125,8 @@ export function StoryVisual({ story, className = '', size = 'default' }: Props) 
           // Cased by CSS, not in the DOM: baking capitals into the text makes
           // screen readers spell it out, and Turkish casing would turn the
           // English topic names ("TypeScript") into "TYPESCRİPT".
-          <div className="accent-ink mt-1 truncate font-mono text-[10px] font-bold uppercase tracking-[0.12em]">
-            {kicker}
+          <div className="accent-ink mt-1 truncate font-mono text-[10px] font-bold tracking-[0.12em]">
+            {trUpper(kicker)}
           </div>
         )}
       </div>

@@ -1,4 +1,4 @@
-import { timeAgo } from '@/lib/format';
+import { timeAgo, trUpper } from '@/lib/format';
 import type { StoryPhase, Timeline, TimelineMomentKind } from '@/lib/types';
 
 /**
@@ -76,8 +76,8 @@ export function StoryTimeline({ timeline }: { timeline: Timeline }) {
               aria-hidden="true"
             />
             <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-              <span className="font-mono text-[11px] uppercase tracking-wide text-ink-500 dark:text-ink-400">
-                {MOMENT_LABEL[moment.kind]}
+              <span className="font-mono text-[11px] tracking-wide text-ink-500 dark:text-ink-400">
+                {trUpper(MOMENT_LABEL[moment.kind])}
               </span>
               <span className="text-sm text-ink-800 dark:text-ink-100">{moment.sourceName}</span>
               <span className="text-[11px] text-ink-400 dark:text-ink-500">{timeAgo(moment.at)}</span>

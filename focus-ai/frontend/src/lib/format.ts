@@ -202,3 +202,22 @@ export function isRedundant(text: string | null | undefined, title: string): boo
 export function meaningful(text: string | null | undefined, title: string): string | null {
   return isRedundant(text, title) ? null : (text as string);
 }
+
+/**
+ * Uppercases the Turkish way.
+ *
+ * CSS `text-transform: uppercase` maps "i" to "I", never to "İ" — and browsers do
+ * not fix this from `lang="tr"`. So every small-caps label in the app was quietly
+ * wrong: "Kimleri etkiliyor?" rendered as "KIMLERI ETKILIYOR?", "Güvenlik" as
+ * "GÜVENLIK", "ilk veren" as "ILK VEREN". To a Turkish reader that is not a
+ * styling detail, it is a spelling mistake repeated on every card.
+ *
+ * Done in JS rather than by writing the labels already-uppercased, because most of
+ * these strings are dynamic — category names, topic names, outlet names — and the
+ * same constants are rendered in sentence case elsewhere.
+ *
+ * The dotless ı is handled by the same call: "Yazılım" → "YAZILIM", correctly.
+ */
+export function trUpper(text: string): string {
+  return text.toLocaleUpperCase('tr-TR');
+}
