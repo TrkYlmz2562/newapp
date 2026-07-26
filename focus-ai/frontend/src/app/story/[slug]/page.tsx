@@ -7,6 +7,7 @@ import { useAuth } from '@/components/AuthProvider';
 import { ErrorState } from '@/components/Shell';
 import { StoryCard, StoryCardSkeleton } from '@/components/StoryCard';
 import { CoverageComparison } from '@/components/CoverageComparison';
+import { ShareButton } from '@/components/ShareButton';
 import { StoryVisual } from '@/components/StoryVisual';
 import { TrustPanel } from '@/components/TrustBadge';
 import { api } from '@/lib/api';
@@ -132,16 +133,19 @@ export default function StoryPage() {
         <Link href="/" className="text-sm text-ink-500 hover:text-ink-800 dark:text-ink-400">
           ← Geri
         </Link>
-        {user && (
-          <button
-            type="button"
-            onClick={toggleSave}
-            aria-pressed={saved}
-            className={`btn-ghost px-3 py-1.5 text-xs ${saved ? 'text-focus-600 dark:text-focus-400' : ''}`}
-          >
-            {saved ? '★ Kaydedildi' : '☆ Kaydet'}
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          <ShareButton story={story} />
+          {user && (
+            <button
+              type="button"
+              onClick={toggleSave}
+              aria-pressed={saved}
+              className={`btn-ghost px-3 py-1.5 text-xs ${saved ? 'text-focus-600 dark:text-focus-400' : ''}`}
+            >
+              {saved ? '★ Kaydedildi' : '☆ Kaydet'}
+            </button>
+          )}
+        </div>
       </nav>
 
       <header className="space-y-3">
