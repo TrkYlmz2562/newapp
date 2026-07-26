@@ -37,7 +37,6 @@ export function CoverageComparison({ sources, points, onSourceClick }: Props) {
   const byTime = [...sources].sort(
     (a, b) => new Date(a.publishedAt).getTime() - new Date(b.publishedAt).getTime(),
   );
-  const first = byTime[0];
   const ordered = [...points].sort((a, b) => KIND_ORDER[a.kind] - KIND_ORDER[b.kind]);
   const divergences = points.filter((point) => point.kind === 'Divergent').length;
 
@@ -52,13 +51,6 @@ export function CoverageComparison({ sources, points, onSourceClick }: Props) {
           {divergences > 0 && ` · ${divergences} noktada ayrışıyor`}
         </span>
       </header>
-
-      {sources.length > 1 && (
-        <p className="mb-4 text-xs text-ink-500 dark:text-ink-400">
-          İlk veren: <span className="font-medium text-ink-700 dark:text-ink-200">{first.name}</span>{' '}
-          · {timeAgo(first.publishedAt)}
-        </p>
-      )}
 
       {ordered.length > 0 && (
         <ul className="mb-5 space-y-3">

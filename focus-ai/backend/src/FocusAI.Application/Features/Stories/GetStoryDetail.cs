@@ -4,6 +4,7 @@ using FocusAI.Application.Common.Mappings;
 using FocusAI.Application.Common.Services;
 using FocusAI.Application.Dtos;
 using FocusAI.Domain.Enums;
+using FocusAI.Domain.Timeline;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,7 +16,8 @@ public sealed class GetStoryDetailQueryHandler(
     IApplicationDbContext db,
     ICurrentUser currentUser,
     IReaderContextFactory readerContextFactory,
-    IVectorSearch vectorSearch) : IRequestHandler<GetStoryDetailQuery, StoryDetailDto>
+    IVectorSearch vectorSearch,
+    IDateTimeProvider clock) : IRequestHandler<GetStoryDetailQuery, StoryDetailDto>
 {
     private const int RelatedCount = 5;
 
@@ -78,9 +80,32 @@ public sealed class GetStoryDetailQueryHandler(
 
         var related = await LoadRelatedAsync(story.Id, story.Embedding, story.Topics.Select(t => t.TopicId).ToList(), cancellationToken);
 
+        // Derived here rather than in the projection: it needs the member articles
+        // as objects, and it is pure arithmetic over timestamps — no query, no cost.
+        var timeline = StoryTimeline.Build(
+            story.Articles
+                .Select(a => new TimelineEntry(
+                    a.PublishedAt,
+                    a.Source?.Name ?? "Bilinmeyen kaynak",
+                    a.Source?.IsOfficial ?? false))
+                .ToList(),
+            clock.UtcNow);
+
         return detail with
         {
             IsBookmarked = isBookmarked,
+            Timeline = timeline is null
+                ? null
+                : new TimelineDto(
+                    timeline.Phase,
+                    timeline.FirstAt,
+                    timeline.LatestAt,
+                    timeline.OutletCount,
+                    timeline.SpanHours,
+                    timeline.LongestQuietHours,
+                    timeline.Moments
+                        .Select(m => new TimelineMomentDto(m.Kind, m.At, m.SourceName))
+                        .ToList()),
             Feedback = feedback,
             PersonalNote = personalNote,
             Related = related

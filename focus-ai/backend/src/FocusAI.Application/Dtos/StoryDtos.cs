@@ -1,5 +1,6 @@
 using FocusAI.Domain.Enums;
 using FocusAI.Domain.Text;
+using FocusAI.Domain.Timeline;
 
 namespace FocusAI.Application.Dtos;
 
@@ -74,6 +75,26 @@ public sealed record CommitmentDto(
     /// <summary>True when a real agreement is still waiting on a named approval.</summary>
     public bool IsConditional => CommitmentLexicon.IsConditional(Tier, Horizon);
 }
+
+/// <summary>
+/// The shape of a story over time: when it broke, when an official body confirmed
+/// it, whether it is still moving.
+/// </summary>
+/// <remarks>
+/// Derived entirely from stored timestamps — no model, no cost, identical on an
+/// install with no API keys. Answers a different question from the coverage
+/// comparison beside it: that one is what the outlets said, this one is when.
+/// </remarks>
+public sealed record TimelineDto(
+    StoryPhase Phase,
+    DateTimeOffset FirstAt,
+    DateTimeOffset LatestAt,
+    int OutletCount,
+    double SpanHours,
+    double LongestQuietHours,
+    IReadOnlyList<TimelineMomentDto> Moments);
+
+public sealed record TimelineMomentDto(TimelineMomentKind Kind, DateTimeOffset At, string SourceName);
 
 /// <summary>Compact shape used by feed lists, digests and search results.</summary>
 public sealed record StoryCardDto
@@ -182,6 +203,9 @@ public sealed record StoryDetailDto
 
     /// <summary>The commitment classification, on finance stories only.</summary>
     public CommitmentDto? Commitment { get; init; }
+
+    /// <summary>How the story developed. Null only when it has no member articles.</summary>
+    public TimelineDto? Timeline { get; init; }
 
     /// <summary>How the sources covering this story agree and differ. Empty with one source.</summary>
     public IReadOnlyList<ComparisonPointDto> Comparison { get; init; } = [];

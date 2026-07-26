@@ -138,6 +138,36 @@ export interface StoryLink {
   thumbnailUrl?: string | null;
 }
 
+export type StoryPhase = 'Breaking' | 'Developing' | 'Settled';
+
+export type TimelineMomentKind =
+  | 'FirstReport'
+  | 'OfficialConfirmation'
+  | 'Resurgence'
+  | 'LatestReport';
+
+export interface TimelineMoment {
+  kind: TimelineMomentKind;
+  at: string;
+  sourceName: string;
+}
+
+/**
+ * The shape of a story over time. Derived from stored timestamps only — no model,
+ * no cost — and answers a different question from the coverage comparison beside
+ * it: that one is what the outlets said, this one is when.
+ */
+export interface Timeline {
+  phase: StoryPhase;
+  firstAt: string;
+  latestAt: string;
+  /** Distinct outlets, not articles: one outlet filing three updates is one voice. */
+  outletCount: number;
+  spanHours: number;
+  longestQuietHours: number;
+  moments: TimelineMoment[];
+}
+
 export interface StoryDetail {
   id: string;
   slug: string;
@@ -165,6 +195,8 @@ export interface StoryDetail {
   related: StoryCard[];
   /** Finance stories only; null everywhere else. */
   commitment?: Commitment | null;
+  /** How the story developed. Null only when it has no member articles. */
+  timeline?: Timeline | null;
   isBookmarked: boolean;
   /** This reader's own verdict, when they gave one. Null means they have not said. */
   feedback?: StoryFeedback | null;

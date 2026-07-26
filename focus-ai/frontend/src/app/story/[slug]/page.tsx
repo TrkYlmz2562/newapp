@@ -10,6 +10,7 @@ import { CommitmentPanel, CorroborationNote } from '@/components/CommitmentBadge
 import { CoverageComparison } from '@/components/CoverageComparison';
 import { FeedbackButtons } from '@/components/FeedbackButtons';
 import { ShareButton } from '@/components/ShareButton';
+import { StoryTimeline } from '@/components/StoryTimeline';
 import { StoryVisual } from '@/components/StoryVisual';
 import { TrustPanel } from '@/components/TrustBadge';
 import { api } from '@/lib/api';
@@ -268,6 +269,8 @@ export default function StoryPage() {
           />
         )
       )}
+
+      {story.timeline && <StoryTimeline timeline={story.timeline} />}
 
       <CoverageComparison
         sources={story.sources}
