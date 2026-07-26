@@ -107,6 +107,11 @@ public class StoryConfiguration : IEntityTypeConfiguration<Story>
             .HasForeignKey<StoryTrust>(x => x.StoryId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.HasOne(x => x.Commitment)
+            .WithOne(x => x.Story)
+            .HasForeignKey<StoryCommitment>(x => x.StoryId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         builder.HasMany(x => x.Links)
             .WithOne(x => x.Story)
             .HasForeignKey(x => x.StoryId)
@@ -139,6 +144,25 @@ public class StorySummaryConfiguration : IEntityTypeConfiguration<StorySummary>
 
         // Npgsql maps List<string> onto text[] natively — no JSON round-trip needed.
         builder.Property(x => x.KeyPoints).HasColumnType("text[]");
+    }
+}
+
+public class StoryCommitmentConfiguration : IEntityTypeConfiguration<StoryCommitment>
+{
+    public void Configure(EntityTypeBuilder<StoryCommitment> builder)
+    {
+        builder.ToTable("story_commitments");
+        builder.HasKey(x => x.Id);
+        builder.HasIndex(x => x.StoryId).IsUnique();
+
+        // The Finans feed's hot path: publishable tiers ordered by event date.
+        builder.HasIndex(x => new { x.Tier, x.Horizon, x.EventDate });
+
+        builder.Property(x => x.Event).HasMaxLength(FieldLimits.CommitmentEvent);
+        builder.Property(x => x.DateText).HasMaxLength(FieldLimits.CommitmentDateText);
+        builder.Property(x => x.Quote).HasMaxLength(FieldLimits.CommitmentQuote);
+        builder.Property(x => x.Condition).HasMaxLength(FieldLimits.CommitmentQuote);
+        builder.Property(x => x.Reference).HasMaxLength(FieldLimits.CommitmentReference);
     }
 }
 

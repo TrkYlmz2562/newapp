@@ -42,6 +42,17 @@ public static class FieldLimits
     /// </summary>
     public const int VisualEntity = 24;
 
+    /// <summary>The core finance event, one clause.</summary>
+    public const int CommitmentEvent = 200;
+
+    public const int CommitmentDateText = 80;
+
+    /// <summary>The verbatim sentence that establishes the tier, and the condition line.</summary>
+    public const int CommitmentQuote = 600;
+
+    /// <summary>"Resmî Gazete, 12 Temmuz 2026, 33012 sayılı".</summary>
+    public const int CommitmentReference = 300;
+
     /// <summary>
     /// Upper bound on how many interests a user may select. Comfortably above
     /// the seeded topic count (~43) so "select all" works, while still capping

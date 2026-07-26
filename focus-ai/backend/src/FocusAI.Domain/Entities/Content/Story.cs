@@ -53,6 +53,9 @@ public class Story : AuditableEntity
 
     public ICollection<Article> Articles { get; set; } = [];
 
+    /// <summary>Finance-only: how firmly this development is committed. Null elsewhere.</summary>
+    public StoryCommitment? Commitment { get; set; }
+
     public ICollection<StoryTopic> Topics { get; set; } = [];
 
     public ICollection<StoryLink> Links { get; set; } = [];

@@ -38,6 +38,23 @@ internal static class ExtractiveFallback
         ["hiring"] = ContentCategory.Career,
         ["paper"] = ContentCategory.Science,
         ["arxiv"] = ContentCategory.Science,
+        // Finance keywords: without these the no-LLM path never yields a Finance
+        // story, and the section stays permanently empty.
+        ["faiz"] = ContentCategory.Finance,
+        ["enflasyon"] = ContentCategory.Finance,
+        ["merkez bankasi"] = ContentCategory.Finance,
+        ["central bank"] = ContentCategory.Finance,
+        ["resmi gazete"] = ContentCategory.Finance,
+        ["borsa"] = ContentCategory.Finance,
+        ["temettu"] = ContentCategory.Finance,
+        ["tahvil"] = ContentCategory.Finance,
+        // Matching is substring-based, so a bare "kap" would also fire on
+        // "kapsam" and "kapatıldı".
+        ["kamuyu aydinlatma"] = ContentCategory.Finance,
+        ["interest rate"] = ContentCategory.Finance,
+        ["inflation"] = ContentCategory.Finance,
+        ["earnings"] = ContentCategory.Finance,
+        ["dividend"] = ContentCategory.Finance,
         ["gpu"] = ContentCategory.Hardware,
         ["chip"] = ContentCategory.Hardware
     };

@@ -47,6 +47,7 @@ export const CATEGORY_LABELS: Record<ContentCategory, string> = {
   Security: 'Güvenlik',
   Hardware: 'Donanım',
   Product: 'Ürün',
+  Finance: 'Finans',
 };
 
 export const CATEGORY_EMOJI: Record<ContentCategory, string> = {
@@ -61,6 +62,7 @@ export const CATEGORY_EMOJI: Record<ContentCategory, string> = {
   Security: '🔐',
   Hardware: '⚙️',
   Product: '📦',
+  Finance: '🏦',
 };
 
 /**
@@ -84,6 +86,7 @@ export const CATEGORY_ACCENT: Record<ContentCategory, { light: string; dark: str
   Security: { light: '#be123c', dark: '#fb7185' },
   Hardware: { light: '#475569', dark: '#a3b3c9' },
   Product: { light: '#be185d', dark: '#f472b6' },
+  Finance: { light: '#0f766e', dark: '#5eead4' },
 };
 
 /** Terminal-style path segment for the card's title bar: `focus:~/<slug>`. ASCII only. */
@@ -99,6 +102,7 @@ export const CATEGORY_SLUG: Record<ContentCategory, string> = {
   Security: 'guvenlik',
   Hardware: 'donanim',
   Product: 'urun',
+  Finance: 'finans',
 };
 
 /**
@@ -118,6 +122,7 @@ export const CATEGORY_ICON: Record<ContentCategory, string> = {
   Security: '<path d="M12 3l7 3v6c0 4.6-3 7.7-7 9-4-1.3-7-4.4-7-9V6z"/><path d="M9 12l2 2 4-4"/>',
   Hardware: '<rect x="6" y="6" width="12" height="12" rx="1.5"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/><path d="M10 3v3M14 3v3M10 18v3M14 18v3M3 10h3M3 14h3M18 10h3M18 14h3"/>',
   Product: '<path d="M12 3l8 4v10l-8 4-8-4V7z"/><path d="M4 7l8 4 8-4M12 11v10"/>',
+  Finance: '<path d="M3 21h18M5 21V10M9 21V10M15 21V10M19 21V10M12 3l9 5H3z"/>',
 };
 
 export const HYPE_LABELS: Record<HypeLevel, string> = {

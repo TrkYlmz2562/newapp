@@ -14,7 +14,8 @@ export type ContentCategory =
   | 'Tools'
   | 'Security'
   | 'Hardware'
-  | 'Product';
+  | 'Product'
+  | 'Finance';
 
 export type HypeLevel = 'Understated' | 'Accurate' | 'SlightlyOverhyped' | 'Overhyped';
 export type LearnUrgency = 'Now' | 'ThisQuarter' | 'Watch' | 'Skip';
@@ -301,4 +302,61 @@ export interface AskResult {
   answer: string;
   confidence: number;
   citations: StoryCard[];
+}
+
+export type CommitmentTier =
+  | 'Unknown'
+  | 'Realized'
+  | 'EnactedDated'
+  | 'OfficialCommitment'
+  | 'ConditionalPending'
+  | 'StatedIntent'
+  | 'UnverifiedClaim'
+  | 'AnalystSpeculation';
+
+export type EventHorizon =
+  | 'Unknown'
+  | 'Completed'
+  | 'Imminent'
+  | 'Near'
+  | 'Mid'
+  | 'Long'
+  | 'Undated';
+
+export type FinanceInstrument =
+  | 'None'
+  | 'ResmiGazete'
+  | 'Kap'
+  | 'KurumKarari'
+  | 'Mahkeme'
+  | 'Sozlesme'
+  | 'ResmiTakvim';
+
+export type DatePrecision = 'None' | 'Day' | 'Window';
+
+export interface FinanceItem {
+  id: string;
+  slug: string;
+  title: string;
+  tier: CommitmentTier;
+  horizon: EventHorizon;
+  instrument: FinanceInstrument;
+  event?: string | null;
+  dateText?: string | null;
+  eventDate?: string | null;
+  datePrecision: DatePrecision;
+  /** The verbatim sentence that establishes the tier. Never paraphrased. */
+  quote?: string | null;
+  condition?: string | null;
+  reference?: string | null;
+  sourceCount: number;
+  publishedAt: string;
+  topics: string[];
+}
+
+export interface FinanceFeed {
+  realized: FinanceItem[];
+  soon: FinanceItem[];
+  later: FinanceItem[];
+  generatedAt: string;
 }

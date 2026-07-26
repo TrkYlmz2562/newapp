@@ -40,7 +40,10 @@ public enum ContentCategory
     Tools = 7,
     Security = 8,
     Hardware = 9,
-    Product = 10
+    Product = 10,
+
+    /// <summary>Appended, never renumbered: the value is persisted as an int.</summary>
+    Finance = 11
 }
 
 public enum ArticleStatus

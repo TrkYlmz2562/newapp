@@ -1,4 +1,5 @@
 import type {
+  FinanceFeed,
   AskResult,
   AuthResult,
   Digest,
@@ -223,6 +224,11 @@ export const api = {
         method: 'POST',
         body: { type, dwellSeconds, surface },
       }),
+  },
+
+  finance: {
+    feed: (conditional = false, take = 40) =>
+      request<FinanceFeed>(`/api/finance${qs({ conditional, take })}`),
   },
 
   digest: {

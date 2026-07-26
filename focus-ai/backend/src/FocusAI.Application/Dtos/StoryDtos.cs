@@ -134,3 +134,33 @@ public sealed record StoryDetailDto
     /// </summary>
     public string? PersonalNote { get; init; }
 }
+
+/// <summary>
+/// One committed finance development. There is deliberately no score, percentage
+/// or rating here: the card shows what makes the item checkable — the tier's name,
+/// the document behind it, and a verbatim sentence — rather than a number implying
+/// a likelihood the product cannot know.
+/// </summary>
+public sealed record FinanceItemDto(
+    Guid Id,
+    string Slug,
+    string Title,
+    CommitmentTier Tier,
+    EventHorizon Horizon,
+    FinanceInstrument Instrument,
+    string? Event,
+    string? DateText,
+    DateOnly? EventDate,
+    DatePrecision DatePrecision,
+    string? Quote,
+    string? Condition,
+    string? Reference,
+    int SourceCount,
+    DateTimeOffset PublishedAt,
+    IReadOnlyList<string> Topics);
+
+public sealed record FinanceFeedDto(
+    IReadOnlyList<FinanceItemDto> Realized,
+    IReadOnlyList<FinanceItemDto> Soon,
+    IReadOnlyList<FinanceItemDto> Later,
+    DateTimeOffset GeneratedAt);

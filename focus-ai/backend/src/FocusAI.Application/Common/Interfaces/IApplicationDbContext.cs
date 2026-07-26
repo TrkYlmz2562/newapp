@@ -24,6 +24,8 @@ public interface IApplicationDbContext
 
     DbSet<StorySummary> StorySummaries { get; }
 
+    DbSet<StoryCommitment> StoryCommitments { get; }
+
     DbSet<StoryAnalysis> StoryAnalyses { get; }
 
     DbSet<StoryTrust> StoryTrusts { get; }

@@ -61,7 +61,42 @@ public static class SeedData
         // ── Video ────────────────────────────────────────────────────────────
         Video("Google for Developers", "youtube-google-dev", "https://www.youtube.com/@GoogleDevelopers", "https://www.youtube.com/feeds/videos.xml?channel_id=UC_x5XG1OV2P6uZZ5FSM9Ttw", ContentCategory.Software),
         Video("Microsoft Developer", "youtube-msdev", "https://www.youtube.com/@MicrosoftDeveloper", "https://www.youtube.com/feeds/videos.xml?channel_id=UCsMica-v34Irf9KVTh6xx-g", ContentCategory.Software),
-        Video("NDC Conferences", "youtube-ndc", "https://www.youtube.com/@NDC", "https://www.youtube.com/feeds/videos.xml?user=NDCConferences", ContentCategory.Software)
+        Video("NDC Conferences", "youtube-ndc", "https://www.youtube.com/@NDC", "https://www.youtube.com/feeds/videos.xml?user=NDCConferences", ContentCategory.Software),
+
+        // ── Finans: birincil kaynaklar ───────────────────────────────────────
+        // Bu bölümün omurgası. Bir kurumun kendi duyurusu, ikinci elden yorum
+        // haberinden yapısal olarak daha kesindir — Finans akışının "bağlayıcı
+        // belge" seviyesi pratikte buradan gelir.
+        // NOT: TCMB'nin ayrı "PPK Kararları" akışı Aralık 2025'te güncellenmeyi
+        // sessizce bıraktı; faiz kararları Basın Duyuruları akışında geliyor.
+        Official("TCMB Basın Duyuruları", "tcmb-duyuru", "https://www.tcmb.gov.tr/",
+            "https://www.tcmb.gov.tr/wps/wcm/connect/TR/TCMB+TR/Bottom+Menu/Diger/RSS/Basin+Duyurulari",
+            ContentCategory.Finance, 0.98),
+        Official("TCMB Veri Duyuruları", "tcmb-veri", "https://www.tcmb.gov.tr/",
+            "https://www.tcmb.gov.tr/wps/wcm/connect/EN/TCMB+EN/Bottom+Menu/Other/RSS/Data",
+            ContentCategory.Finance, 0.98),
+        Official("ECB Press", "ecb-press", "https://www.ecb.europa.eu/",
+            "https://www.ecb.europa.eu/rss/press.html", ContentCategory.Finance, 0.97),
+        Official("Federal Reserve — Monetary Policy", "fed-monetary", "https://www.federalreserve.gov/",
+            "https://www.federalreserve.gov/feeds/press_monetary.xml", ContentCategory.Finance, 0.97),
+        Official("SEC Press Releases", "sec-press", "https://www.sec.gov/",
+            "https://www.sec.gov/news/pressreleases.rss", ContentCategory.Finance, 0.95),
+
+        // ── Finans: haber ────────────────────────────────────────────────────
+        // Reuters ve AP akışları kapatıldı (401/404). WSJ daha da sinsi: HTTP 200
+        // dönüyor ama en yeni içeriği Ocak 2025 — durum koduna bakan bir hat
+        // 18 aylık haberi taze sanıp yayımlar. Üçü de bilerek eklenmedi.
+        News("Ekonomim", "ekonomim", "https://www.ekonomim.com/", "https://www.ekonomim.com/rss",
+            ContentCategory.Finance, 0.7, 45, "tr"),
+        News("AA Ekonomi", "aa-ekonomi", "https://www.aa.com.tr/tr/ekonomi",
+            "https://www.aa.com.tr/tr/rss/default?cat=ekonomi", ContentCategory.Finance, 0.78, 45, "tr"),
+        News("Webrazzi", "webrazzi", "https://webrazzi.com/", "https://webrazzi.com/feed",
+            ContentCategory.Startup, 0.7, 60, "tr"),
+        News("Bloomberg", "bloomberg", "https://www.bloomberg.com/",
+            "https://feeds.bloomberg.com/markets/news.rss", ContentCategory.Finance, 0.8, 45),
+        News("CNBC Earnings", "cnbc-earnings", "https://www.cnbc.com/earnings/",
+            "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=15839135",
+            ContentCategory.Finance, 0.75, 60)
     ];
 
     public static IReadOnlyList<Topic> Topics() =>
@@ -148,6 +183,35 @@ public static class SeedData
             IsOfficial = true,
             TrustWeight = trustWeight,
             FetchIntervalMinutes = 60
+        };
+
+    /// <summary>
+    /// A news outlet: real reporting, but second-hand by construction, so it never
+    /// counts as official and its items cannot on their own reach the binding tiers
+    /// of the Finans feed.
+    /// </summary>
+    private static Source News(
+        string name,
+        string slug,
+        string website,
+        string feed,
+        ContentCategory category,
+        double trustWeight,
+        int intervalMinutes,
+        string language = "en") =>
+        new()
+        {
+            Name = name,
+            Slug = slug,
+            WebsiteUrl = website,
+            FeedUrl = feed,
+            Kind = SourceKind.Rss,
+            Category = SourceCategory.News,
+            DefaultContentCategory = category,
+            IsOfficial = false,
+            TrustWeight = trustWeight,
+            FetchIntervalMinutes = intervalMinutes,
+            Language = language
         };
 
     private static Source Community(

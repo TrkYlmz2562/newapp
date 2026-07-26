@@ -23,6 +23,7 @@ public sealed class EnrichStoriesCommandHandler(
     IContentAiService ai,
     ISearchIndex searchIndex,
     IDateTimeProvider clock,
+    ICommitmentClassifier commitmentClassifier,
     ILogger<EnrichStoriesCommandHandler> logger) : IRequestHandler<EnrichStoriesCommand, IngestionReportDto>
 {
     /// <summary>Excerpt budget per member article handed to the model.</summary>
@@ -42,6 +43,7 @@ public sealed class EnrichStoriesCommandHandler(
             .Include(s => s.Summary)
             .Include(s => s.Analysis)
             .Include(s => s.Trust)
+            .Include(s => s.Commitment)
             .Include(s => s.Topics)
             .AsQueryable();
 
@@ -81,6 +83,7 @@ public sealed class EnrichStoriesCommandHandler(
                 ApplyAnalysis(story, analysis, now);
                 ApplyTopics(story, summary.TopicSlugs, topicsBySlug, topicTerms);
                 ApplyScores(story, summary, now);
+                await ApplyCommitmentAsync(story, context, now, cancellationToken);
 
                 story.Status = StoryStatus.Published;
                 story.UpdatedAt = now;
@@ -155,6 +158,80 @@ public sealed class EnrichStoriesCommandHandler(
     /// </summary>
     private static string SourceCorpus(Story story) =>
         string.Join(' ', story.Articles.Select(a => $"{a.Title} {a.BestText()}"));
+
+    /// <summary>
+    /// Finance stories carry a commitment classification; everything else does not.
+    /// A failure here must not fail the story — the item simply never reaches the
+    /// Finans feed, which is the safe direction.
+    /// </summary>
+    private async Task ApplyCommitmentAsync(
+        Story story,
+        StoryPromptContext context,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        if (story.Category != ContentCategory.Finance)
+        {
+            return;
+        }
+
+        StoryCommitment? evaluated;
+
+        try
+        {
+            var result = await commitmentClassifier.ClassifyAsync(context, cancellationToken);
+            evaluated = CommitmentEvaluator.Evaluate(
+                result,
+                SourceCorpus(story),
+                story.PublishedAt,
+                now,
+                commitmentClassifier.Version);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "FocusAI commitment classification failed for {StorySlug}", story.Slug);
+            evaluated = null;
+        }
+
+        if (evaluated is null)
+        {
+            // An existing classification is cleared rather than left behind: stale
+            // certainty is worse than none.
+            if (story.Commitment is not null)
+            {
+                db.StoryCommitments.Remove(story.Commitment);
+                story.Commitment = null;
+            }
+
+            return;
+        }
+
+        if (story.Commitment is null)
+        {
+            evaluated.StoryId = story.Id;
+            story.Commitment = evaluated;
+            db.StoryCommitments.Add(evaluated);
+            return;
+        }
+
+        var existing = story.Commitment;
+        existing.Tier = evaluated.Tier;
+        existing.ModelTier = evaluated.ModelTier;
+        existing.Horizon = evaluated.Horizon;
+        existing.ClaimSource = evaluated.ClaimSource;
+        existing.Instrument = evaluated.Instrument;
+        existing.Event = evaluated.Event;
+        existing.DateText = evaluated.DateText;
+        existing.EventDate = evaluated.EventDate;
+        existing.DatePrecision = evaluated.DatePrecision;
+        existing.Quote = evaluated.Quote;
+        existing.Condition = evaluated.Condition;
+        existing.Reference = evaluated.Reference;
+        existing.IsReversed = evaluated.IsReversed;
+        existing.ClassifierVersion = evaluated.ClassifierVersion;
+        existing.ClassifiedAt = evaluated.ClassifiedAt;
+        existing.UpdatedAt = now;
+    }
 
     private void ApplySummary(Story story, StorySummaryResult result, DateTimeOffset now)
     {

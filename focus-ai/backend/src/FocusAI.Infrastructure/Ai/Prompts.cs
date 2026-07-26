@@ -33,7 +33,7 @@ internal static class Prompts
           "whatShouldIDo": "okuyucu ne yapmalı; gerekmiyorsa 'Şu an bir aksiyon gerekmiyor.' yaz",
           "keyPoints": ["3-5 kısa madde"],
           "topicSlugs": ["ilgili teknoloji slug'ları, örn: dotnet, angular, mcp, llm"],
-          "category": "Ai | Software | OpenSource | Startup | Science | Career | Tools | Security | Hardware | Product",
+          "category": "Ai | Software | OpenSource | Startup | Science | Career | Tools | Security | Hardware | Product | Finance",
           "importance": 0.0-1.0,
           "technicalAccuracy": 0.0-1.0,
           "readingMinutes": 1-10,
@@ -49,6 +49,63 @@ internal static class Prompts
         - Tek başına anlamlı olmalı: "M5", "OpenSSH", "React 20", "20M$", "CVE-2026-1234".
         - Genel kelime yazma: "yapay zekâ", "teknoloji", "şirket", "güncelleme" OLMAZ.
         - Cümle değil, etikettir. Fiil kullanma.
+        """;
+
+    /// <summary>
+    /// Bumped whenever this prompt or the code-side lexicon changes. Stored
+    /// classifications carrying an older version are re-run rather than trusted.
+    /// </summary>
+    public const int CommitmentClassifierVersion = 1;
+
+    public const string CommitmentSystem = """
+        Bir finans haberini sınıflandırıyorsun. Görevin haberin GERÇEKLEŞİP
+        gerçekleşmeyeceğini tahmin etmek DEĞİL. Bunu asla yapma.
+
+        Görevin: metne göre ilgili tarafın kendini NE KADAR BAĞLADIĞINI belirlemek.
+        Bu, metnin bir özelliğidir; okuyucu da kontrol edebilir.
+
+        Seviyeler (en bağlayıcıdan en zayıfa):
+        - REALIZED: Olay zaten gerçekleşti ve kayda geçti.
+        - ENACTED_DATED: Bağlayıcı bir belge var (yayımlandı/imzalandı/tescil edildi
+          ya da yayımlanmış resmî takvim) ve ileri bir tarihi sabitliyor.
+        - OFFICIAL_COMMITMENT: Kararı verme yetkisi olan merci, kendi kararını
+          tarihiyle birlikte kendi ağzından duyurdu; belge henüz yayımlanmadı.
+        - CONDITIONAL_PENDING: Gerçek bir anlaşma/karar var ama ADI KONMUŞ bir onaya,
+          oylamaya veya kapanış şartına bağlı.
+        - STATED_INTENT: Niyet, plan, hedef. Bağlayıcı belge yok, çoğu zaman tarih yok.
+        - UNVERIFIED_CLAIM: İsimsiz kaynaklara dayanıyor, duyum olarak aktarılıyor.
+        - ANALYST_SPECULATION: Üçüncü tarafın beklentisi, hedef fiyatı, senaryosu.
+
+        TÜRKÇE İÇİN KRİTİK: -mış/-miş/-muş/-müş eki duyum bildirir.
+        "imzalandı" birinci elden bilgidir; "imzalanmış" duyumdur ve UNVERIFIED_CLAIM'dir.
+        Aradaki fark iki harftir ve anlamı tersine çevirir.
+        ("-mıştır" istisnadır: resmî dilde kesin bildirimdir, duyum değildir.)
+
+        Tarih olmayan ifadeler: "yakında", "kısa süre içinde", "önümüzdeki dönem",
+        "orta vadede". Bunlar tarih DEĞİLDİR; dateText'i null bırak.
+
+        Yanıtı SADECE geçerli JSON olarak ver:
+        {
+          "isFinance": true | false,
+          "tier": "REALIZED | ENACTED_DATED | OFFICIAL_COMMITMENT | CONDITIONAL_PENDING | STATED_INTENT | UNVERIFIED_CLAIM | ANALYST_SPECULATION",
+          "claimSource": "OFFICIAL_DOCUMENT | ACTOR_ITSELF | NAMED_THIRD_PARTY | UNNAMED_SOURCE | OUTLET_INFERENCE",
+          "instrument": "RESMI_GAZETE | KAP | KURUM_KARARI | MAHKEME | SOZLESME | RESMI_TAKVIM | YOK",
+          "event": "olayın tek cümlelik özü (en fazla 200 karakter)",
+          "dateText": "metinde AYNEN geçen tarih ifadesi, yoksa null",
+          "quote": "seviyeyi belirleyen cümle, metinden AYNEN alıntı",
+          "condition": "varsa, gerçekleşmesi için gereken adı konmuş onay; yoksa null",
+          "reference": "dayanak: kurum + belge türü + tarih + sayı; yoksa null",
+          "ambiguous": true | false
+        }
+
+        ZORUNLU: "quote" ve "dateText" alanları kaynak metinde HARFİ HARFİNE
+        geçmelidir. Sistem bunu kontrol eder; uyuşmayan kayıt tamamen elenir.
+        Kısaltma, düzeltme, çeviri yapma — kopyala.
+
+        "ambiguous", olayın gerçekleşip gerçekleşmeyeceğiyle İLGİLİ DEĞİLDİR;
+        metnin seviyeyi belirlemeye yetip yetmediğiyle ilgilidir. Emin değilsen true.
+
+        Yatırım yorumu, etkilenecek hisse, hedef fiyat, tavsiye YAZMA.
         """;
 
     public const string AnalysisSystem = """
@@ -90,7 +147,7 @@ internal static class Prompts
         {
           "text": "anahtar kelime kısmı (zaman/kategori ifadeleri çıkarılmış)",
           "topicSlugs": ["tespit edilen teknoloji slug'ları"],
-          "category": "Ai | Software | OpenSource | Startup | Science | Career | Tools | Security | Hardware | Product | null",
+          "category": "Ai | Software | OpenSource | Startup | Science | Career | Tools | Security | Hardware | Product | Finance | null",
           "from": "ISO 8601 tarih veya null",
           "to": "ISO 8601 tarih veya null",
           "minTrustScore": 0-100 veya null,

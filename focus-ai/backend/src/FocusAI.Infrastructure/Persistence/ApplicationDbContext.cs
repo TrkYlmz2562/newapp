@@ -24,6 +24,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
     public DbSet<StorySummary> StorySummaries => Set<StorySummary>();
 
+    public DbSet<StoryCommitment> StoryCommitments => Set<StoryCommitment>();
+
     public DbSet<StoryAnalysis> StoryAnalyses => Set<StoryAnalysis>();
 
     public DbSet<StoryTrust> StoryTrusts => Set<StoryTrust>();

@@ -110,6 +110,7 @@ public static class DependencyInjection
 
         services.AddSingleton<ILlmClientFactory, LlmClientFactory>();
         services.AddScoped<IContentAiService, ContentAiService>();
+        services.AddScoped<ICommitmentClassifier, CommitmentClassifier>();
 
         services.AddHttpClient<OpenAiEmbeddingService>((provider, client) =>
         {
