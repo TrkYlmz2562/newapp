@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { CATEGORY_ART, CATEGORY_EMOJI, CATEGORY_LABELS } from '@/lib/format';
+import { useEffect, useRef, useState } from 'react';
+import { CATEGORY_ART, CATEGORY_ICON, CATEGORY_LABELS } from '@/lib/format';
+import { drawCircuit, seededRandom } from '@/lib/illustration';
 import type { ContentCategory } from '@/lib/types';
 
 interface VisualStory {
@@ -13,33 +14,50 @@ interface VisualStory {
 interface Props {
   story: VisualStory;
   className?: string;
-  emojiClassName?: string;
-}
-
-/**
- * Deterministic 0..mod from a string, so a given story always draws the same tile
- * (a random seed would reshuffle the gradient on every render).
- */
-function seededInt(seed: string, mod: number): number {
-  let hash = 0;
-  for (let i = 0; i < seed.length; i += 1) {
-    hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
-  }
-  return hash % mod;
+  /** The monospace category tag in the corner. Hidden where the category is already shown. */
+  showTag?: boolean;
 }
 
 /**
  * The story's visual: the real publisher/OG image when we have one, otherwise a
- * generated category illustration (gradient + emoji + label). A story without an
- * image is never hidden or penalised — it simply shows the illustration. If a
- * remote image 404s or is blocked, onError falls back to the same illustration
- * instead of leaving a broken-image icon.
+ * generated circuit illustration painted on a category-coloured gradient. A story
+ * without an image is never hidden or penalised — it just shows the illustration.
+ * A remote image that 404s or is blocked falls back to the same illustration via
+ * onError rather than leaving a broken-image icon.
  */
-export function StoryVisual({ story, className = '', emojiClassName = 'text-5xl' }: Props) {
+export function StoryVisual({ story, className = '', showTag = true }: Props) {
   const [broken, setBroken] = useState(false);
-  const showImage = Boolean(story.heroImageUrl) && !broken;
+  const useImage = Boolean(story.heroImageUrl) && !broken;
 
-  if (showImage) {
+  const boxRef = useRef<HTMLDivElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    if (useImage) return undefined;
+    const box = boxRef.current;
+    const canvas = canvasRef.current;
+    if (!box || !canvas) return undefined;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return undefined;
+
+    const draw = () => {
+      const { width, height } = box.getBoundingClientRect();
+      if (width < 2 || height < 2) return;
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, width, height);
+      drawCircuit(ctx, width, height, seededRandom(story.slug || 'focus'));
+    };
+
+    draw();
+    const observer = new ResizeObserver(draw);
+    observer.observe(box);
+    return () => observer.disconnect();
+  }, [useImage, story.slug]);
+
+  if (useImage) {
     return (
       <div className={`relative overflow-hidden bg-ink-100 dark:bg-ink-800 ${className}`}>
         {/* eslint-disable-next-line @next/next/no-img-element -- publisher images come
@@ -56,29 +74,33 @@ export function StoryVisual({ story, className = '', emojiClassName = 'text-5xl'
   }
 
   const [from, to] = CATEGORY_ART[story.category] ?? CATEGORY_ART.Unknown;
-  const angle = 115 + seededInt(story.slug, 90); // 115°..204°, varied per story
 
   return (
     <div
-      aria-hidden
+      ref={boxRef}
       className={`relative overflow-hidden ${className}`}
-      style={{
-        backgroundImage: `radial-gradient(circle at 1px 1px, rgba(255,255,255,0.16) 1px, transparent 0), linear-gradient(${angle}deg, ${from}, ${to})`,
-        backgroundSize: '14px 14px, cover',
-      }}
+      style={{ backgroundImage: `linear-gradient(150deg, ${from}, ${to})` }}
     >
-      <div
-        className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 text-white"
-        // A soft text shadow keeps the emoji and label legible on the lighter
-        // category gradients (e.g. Startup/Tools), where white alone dips under
-        // the WCAG AA contrast floor.
-        style={{ textShadow: '0 1px 3px rgba(0,0,0,0.45)' }}
-      >
-        <span className={emojiClassName}>{CATEGORY_EMOJI[story.category]}</span>
-        <span className="text-[11px] font-semibold uppercase tracking-[0.18em]">
+      <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" aria-hidden="true" />
+      {showTag && (
+        <span
+          className="absolute bottom-2.5 left-3 inline-flex items-center gap-1.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.13em] text-white"
+          style={{ textShadow: '0 1px 3px rgba(0,0,0,.55)' }}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            className="h-[15px] w-[15px]"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.7}
+            aria-hidden="true"
+            dangerouslySetInnerHTML={{
+              __html: CATEGORY_ICON[story.category] ?? CATEGORY_ICON.Unknown,
+            }}
+          />
           {CATEGORY_LABELS[story.category]}
         </span>
-      </div>
+      )}
     </div>
   );
 }

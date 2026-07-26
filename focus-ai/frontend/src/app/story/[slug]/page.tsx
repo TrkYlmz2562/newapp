@@ -153,18 +153,14 @@ export default function StoryPage() {
           <span>{readingTime(story.readingMinutes)}</span>
         </div>
 
-        <h1 className="text-2xl font-bold leading-tight text-ink-900 dark:text-ink-50 sm:text-3xl">
+        <h1 className="font-serif text-2xl font-semibold leading-tight tracking-tight text-ink-900 dark:text-ink-50 sm:text-3xl">
           {story.title}
         </h1>
 
         {dek && <p className="text-base text-ink-600 dark:text-ink-300">{dek}</p>}
       </header>
 
-      <StoryVisual
-        story={story}
-        className="h-56 w-full rounded-2xl sm:h-72"
-        emojiClassName="text-7xl"
-      />
+      <StoryVisual story={story} className="h-56 w-full rounded-2xl sm:h-72" showTag={false} />
 
       {story.personalNote && (
         <aside className="rounded-2xl border-l-4 border-focus-500 bg-focus-50 p-4 dark:bg-focus-900/30">
