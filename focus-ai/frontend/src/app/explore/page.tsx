@@ -81,7 +81,7 @@ function ExploreContent() {
           className={`chip shrink-0 border px-3 py-1.5 text-sm ${
             active === null
               ? 'border-focus-500 bg-focus-50 text-focus-700 dark:bg-focus-900/40 dark:text-focus-200'
-              : 'border-ink-200 bg-white text-ink-700 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-200'
+              : 'border-ink-300 bg-transparent text-ink-700 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-200'
           }`}
         >
           Tümü
@@ -97,7 +97,7 @@ function ExploreContent() {
             className={`chip shrink-0 border px-3 py-1.5 text-sm ${
               active === category
                 ? 'border-focus-500 bg-focus-50 text-focus-700 dark:bg-focus-900/40 dark:text-focus-200'
-                : 'border-ink-200 bg-white text-ink-700 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-200'
+                : 'border-ink-300 bg-transparent text-ink-700 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-200'
             }`}
           >
             {CATEGORY_EMOJI[category]} {CATEGORY_LABELS[category]}

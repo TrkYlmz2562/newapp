@@ -26,7 +26,7 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Ana gezinme"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-ink-200/80 bg-white/95 backdrop-blur
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-ink-200/80 bg-ink-50/95 backdrop-blur
                  dark:border-ink-800 dark:bg-ink-950/95"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >

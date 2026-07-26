@@ -72,7 +72,7 @@ export default function HomePage() {
       <SearchBar />
 
       {digest?.intro && (
-        <p className="mx-4 rounded-2xl bg-white p-4 text-sm leading-relaxed text-ink-700 shadow-sm dark:bg-ink-900 dark:text-ink-200 sm:mx-5">
+        <p className="mx-4 border-l-2 border-focus-600 bg-ink-100 p-4 text-sm leading-relaxed text-ink-700 shadow-sm dark:bg-ink-900 dark:text-ink-200 sm:mx-5">
           {digest.intro}
         </p>
       )}
@@ -82,7 +82,7 @@ export default function HomePage() {
           <Link
             key={category}
             href={href}
-            className="chip shrink-0 border border-ink-200 bg-white px-3 py-1.5 text-sm text-ink-700
+            className="chip shrink-0 border border-ink-300 bg-transparent px-3 py-1.5 text-sm text-ink-700
                        hover:border-focus-300 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-200"
           >
             {CATEGORY_EMOJI[category]} {CATEGORY_LABELS[category]}
@@ -90,7 +90,7 @@ export default function HomePage() {
         ))}
         <Link
           href="/trends"
-          className="chip shrink-0 border border-ink-200 bg-white px-3 py-1.5 text-sm text-ink-700
+          className="chip shrink-0 border border-ink-300 bg-transparent px-3 py-1.5 text-sm text-ink-700
                      hover:border-focus-300 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-200"
         >
           📈 Trendler

@@ -79,7 +79,7 @@ export function ThemeToggle() {
     <div
       role="radiogroup"
       aria-label="Tema"
-      className="inline-flex rounded-xl border border-ink-200 bg-white p-0.5 dark:border-ink-700 dark:bg-ink-900"
+      className="inline-flex rounded-xl border border-ink-200 bg-transparent p-0.5 dark:border-ink-700 dark:bg-ink-900"
     >
       {OPTIONS.map((option) => {
         // Before the stored value is read every option would render unselected,

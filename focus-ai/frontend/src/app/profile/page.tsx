@@ -216,7 +216,7 @@ export default function ProfilePage() {
                   className={`chip border px-3 py-1.5 text-sm transition ${
                     active
                       ? 'border-focus-500 bg-focus-50 text-focus-700 dark:bg-focus-900/40 dark:text-focus-200'
-                      : 'border-ink-200 bg-white text-ink-600 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-300'
+                      : 'border-ink-300 bg-transparent text-ink-600 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-300'
                   }`}
                 >
                   {topic.name}
@@ -272,7 +272,7 @@ export default function ProfilePage() {
                     await api.profile.toggleMute(topic.slug);
                     await load();
                   }}
-                  className="chip border border-ink-200 bg-white px-3 py-1.5 text-sm text-ink-600
+                  className="chip border border-ink-300 bg-transparent px-3 py-1.5 text-sm text-ink-600
                              dark:border-ink-700 dark:bg-ink-900 dark:text-ink-300"
                 >
                   {topic.name} ✕
