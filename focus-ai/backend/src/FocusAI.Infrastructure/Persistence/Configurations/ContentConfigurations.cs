@@ -112,6 +112,11 @@ public class StoryConfiguration : IEntityTypeConfiguration<Story>
             .HasForeignKey<StoryCommitment>(x => x.StoryId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.HasOne(x => x.Comparison)
+            .WithOne(x => x.Story)
+            .HasForeignKey<StoryComparison>(x => x.StoryId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         builder.HasMany(x => x.Links)
             .WithOne(x => x.Story)
             .HasForeignKey(x => x.StoryId)
@@ -163,6 +168,35 @@ public class StoryCommitmentConfiguration : IEntityTypeConfiguration<StoryCommit
         builder.Property(x => x.Quote).HasMaxLength(FieldLimits.CommitmentQuote);
         builder.Property(x => x.Condition).HasMaxLength(FieldLimits.CommitmentQuote);
         builder.Property(x => x.Reference).HasMaxLength(FieldLimits.CommitmentReference);
+    }
+}
+
+public class StoryComparisonConfiguration : IEntityTypeConfiguration<StoryComparison>
+{
+    public void Configure(EntityTypeBuilder<StoryComparison> builder)
+    {
+        builder.ToTable("story_comparisons");
+        builder.HasKey(x => x.Id);
+        builder.HasIndex(x => x.StoryId).IsUnique();
+
+        builder.Property(x => x.Provider).HasMaxLength(FieldLimits.ProviderName);
+        builder.Property(x => x.Model).HasMaxLength(FieldLimits.ModelName);
+
+        // A short, read-only list rendered as a block — jsonb keeps it one row
+        // instead of a child table whose shape would change with the prompt.
+        builder.Property(x => x.Points)
+            .HasColumnType("jsonb")
+            .HasConversion(
+                value => JsonSerializer.Serialize(value, (JsonSerializerOptions?)null),
+                value => JsonSerializer.Deserialize<List<ComparisonPoint>>(value, (JsonSerializerOptions?)null)
+                         ?? new List<ComparisonPoint>(),
+                new ValueComparer<List<ComparisonPoint>>(
+                    (left, right) => JsonSerializer.Serialize(left, (JsonSerializerOptions?)null) ==
+                                     JsonSerializer.Serialize(right, (JsonSerializerOptions?)null),
+                    value => value == null ? 0 : JsonSerializer.Serialize(value, (JsonSerializerOptions?)null).GetHashCode(),
+                    value => JsonSerializer.Deserialize<List<ComparisonPoint>>(
+                        JsonSerializer.Serialize(value, (JsonSerializerOptions?)null), (JsonSerializerOptions?)null)
+                        ?? new List<ComparisonPoint>()));
     }
 }
 

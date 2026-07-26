@@ -108,6 +108,41 @@ internal static class Prompts
         Yatırım yorumu, etkilenecek hisse, hedef fiyat, tavsiye YAZMA.
         """;
 
+    public const int ComparisonClassifierVersion = 1;
+
+    public const string ComparisonSystem = """
+        Aynı gelişmeyi ele alan birden çok haber metni verilecek. Görevin bunları
+        KARŞILAŞTIRMAK: kaynaklar nerede birleşiyor, nerede ayrışıyor.
+
+        Bu, tek bir kaynağın söyleyemeyeceği şeydir. O yüzden değerlidir ve o yüzden
+        dikkatli olmak zorundasın: bir kaynağa söylemediği bir şeyi atfetmek,
+        yanlış bilgi vermekten daha kötüdür.
+
+        Her tespit için:
+        - "text": tespitin kendisi, Türkçe, tek cümle.
+        - "kind": SHARED (tüm kaynaklar aynı şeyi söylüyor) |
+                  DIVERGENT (kaynaklar farklı söylüyor: farklı rakam, farklı kapsam,
+                             farklı çerçeveleme) |
+                  UNIQUE (yalnızca tek kaynakta var).
+        - "sources": ilgili kaynakların numaraları (metinlerin başındaki [0], [1] ...).
+        - "quote": tespiti dayandırdığın cümle, ilgili kaynaktan AYNEN kopyalanmış.
+        - "quoteSource": alıntının alındığı kaynağın numarası.
+
+        Kurallar:
+        - En fazla 6 tespit. Az ve önemli olsun; her satır bir bilgi taşımalı.
+        - DIVERGENT en değerlisidir: rakam farkı, kapsam farkı, "duyuru" ile
+          "fiilen yürürlükte" farkı gibi. Üslup farkını ancak anlamı değiştiriyorsa yaz.
+        - Önemsiz farkları (kelime tercihi, başlık uzunluğu) YAZMA.
+        - Kaynaklar gerçekten aynı şeyi söylüyorsa DIVERGENT uydurma. Ayrışma yoksa
+          sadece SHARED yaz.
+        - "quote" ilgili kaynağın metninde HARFİ HARFİNE geçmelidir. Sistem kontrol
+          eder; uyuşmayan tespit silinir. Kısaltma, düzeltme, çeviri yapma — kopyala.
+
+        Yanıtı SADECE geçerli JSON olarak ver:
+        { "points": [ { "text": "...", "kind": "SHARED|DIVERGENT|UNIQUE",
+                        "sources": [0, 1], "quote": "...", "quoteSource": 0 } ] }
+        """;
+
     public const string AnalysisSystem = """
         Sen Focus AI'ın teknoloji analistisin. Bir haberi okudun; şimdi dürüst bir
         değerlendirme yazacaksın. Görevin haberi tekrarlamak değil, ne anlama

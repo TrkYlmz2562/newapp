@@ -56,6 +56,9 @@ public class Story : AuditableEntity
     /// <summary>Finance-only: how firmly this development is committed. Null elsewhere.</summary>
     public StoryCommitment? Commitment { get; set; }
 
+    /// <summary>How the sources covering this story agree and differ. Needs 2+ sources.</summary>
+    public StoryComparison? Comparison { get; set; }
+
     public ICollection<StoryTopic> Topics { get; set; } = [];
 
     public ICollection<StoryLink> Links { get; set; } = [];

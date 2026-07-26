@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
 import { ErrorState } from '@/components/Shell';
 import { StoryCard, StoryCardSkeleton } from '@/components/StoryCard';
+import { CoverageComparison } from '@/components/CoverageComparison';
 import { StoryVisual } from '@/components/StoryVisual';
 import { TrustPanel } from '@/components/TrustBadge';
 import { api } from '@/lib/api';
@@ -230,41 +231,13 @@ export default function StoryPage() {
         </section>
       )}
 
-      <section className="card p-4">
-        <h2 className="mb-3 text-sm font-semibold text-ink-800 dark:text-ink-100">
-          Kaynaklar ({story.sources.length})
-        </h2>
-        <ul className="space-y-2">
-          {story.sources.map((source) => (
-            <li key={`${source.id}-${source.url}`}>
-              <a
-                href={source.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => {
-                  if (user) void api.stories.recordInteraction(story.id, 'SourceClick', undefined, 'detail').catch(() => {});
-                }}
-                className="flex items-start gap-2 rounded-lg p-2 text-sm transition hover:bg-ink-50 dark:hover:bg-ink-800"
-              >
-                <span className="mt-0.5 shrink-0">{source.isOfficial ? '✅' : '🔗'}</span>
-                <span className="min-w-0">
-                  <span className="block truncate font-medium text-ink-800 dark:text-ink-100">
-                    {source.name}
-                    {source.isOfficial && (
-                      <span className="ml-1.5 text-[11px] font-normal text-emerald-600 dark:text-emerald-400">
-                        resmi
-                      </span>
-                    )}
-                  </span>
-                  <span className="block truncate text-xs text-ink-500 dark:text-ink-400">
-                    {source.articleTitle} · {timeAgo(source.publishedAt)}
-                  </span>
-                </span>
-              </a>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <CoverageComparison
+        sources={story.sources}
+        points={story.comparison}
+        onSourceClick={() => {
+          if (user) void api.stories.recordInteraction(story.id, 'SourceClick', undefined, 'detail').catch(() => {});
+        }}
+      />
 
       {story.links.length > 0 && (
         <section className="card p-4">

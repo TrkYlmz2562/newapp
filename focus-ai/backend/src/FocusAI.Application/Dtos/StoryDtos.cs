@@ -122,6 +122,9 @@ public sealed record StoryDetailDto
 
     public IReadOnlyList<StoryLinkDto> Links { get; init; } = [];
 
+    /// <summary>How the sources covering this story agree and differ. Empty with one source.</summary>
+    public IReadOnlyList<ComparisonPointDto> Comparison { get; init; } = [];
+
     public IReadOnlyList<TopicDto> Topics { get; init; } = [];
 
     public IReadOnlyList<StoryCardDto> Related { get; init; } = [];
@@ -134,6 +137,18 @@ public sealed record StoryDetailDto
     /// </summary>
     public string? PersonalNote { get; init; }
 }
+
+/// <summary>
+/// One observation about how the outlets covered a story. The quote and the
+/// attributed outlet travel with it so the reader can check the claim rather than
+/// take the comparison on trust.
+/// </summary>
+public sealed record ComparisonPointDto(
+    string Text,
+    ComparisonKind Kind,
+    IReadOnlyList<string> Sources,
+    string Quote,
+    string QuoteSource);
 
 /// <summary>
 /// One committed finance development. There is deliberately no score, percentage

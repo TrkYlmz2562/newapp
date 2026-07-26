@@ -24,6 +24,7 @@ public sealed class EnrichStoriesCommandHandler(
     ISearchIndex searchIndex,
     IDateTimeProvider clock,
     ICommitmentClassifier commitmentClassifier,
+    ICoverageComparer coverageComparer,
     ILogger<EnrichStoriesCommandHandler> logger) : IRequestHandler<EnrichStoriesCommand, IngestionReportDto>
 {
     /// <summary>Excerpt budget per member article handed to the model.</summary>
@@ -44,6 +45,7 @@ public sealed class EnrichStoriesCommandHandler(
             .Include(s => s.Analysis)
             .Include(s => s.Trust)
             .Include(s => s.Commitment)
+            .Include(s => s.Comparison)
             .Include(s => s.Topics)
             .AsQueryable();
 
@@ -84,6 +86,7 @@ public sealed class EnrichStoriesCommandHandler(
                 ApplyTopics(story, summary.TopicSlugs, topicsBySlug, topicTerms);
                 ApplyScores(story, summary, now);
                 await ApplyCommitmentAsync(story, context, now, cancellationToken);
+                await ApplyComparisonAsync(story, now, cancellationToken);
 
                 story.Status = StoryStatus.Published;
                 story.UpdatedAt = now;
@@ -231,6 +234,60 @@ public sealed class EnrichStoriesCommandHandler(
         existing.ClassifierVersion = evaluated.ClassifierVersion;
         existing.ClassifiedAt = evaluated.ClassifiedAt;
         existing.UpdatedAt = now;
+    }
+
+    /// <summary>
+    /// Compares how the member outlets covered the story. Only meaningful with two
+    /// or more sources, and a failure is silent — the detail page still shows the
+    /// deterministic timeline and each outlet's own headline.
+    /// </summary>
+    private async Task ApplyComparisonAsync(Story story, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var sources = story.Articles
+            .OrderBy(a => a.PublishedAt)
+            .Select(a => new CoverageSource(
+                a.Source?.Name ?? "Bilinmeyen kaynak",
+                a.Title,
+                a.BestText()))
+            .ToList();
+
+        if (sources.Count < 2)
+        {
+            return;
+        }
+
+        StoryComparison? evaluated;
+
+        try
+        {
+            var result = await coverageComparer.CompareAsync(story.Title, sources, cancellationToken);
+            evaluated = CoverageEvaluator.Evaluate(result, sources, now, coverageComparer.Version);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "FocusAI coverage comparison failed for {StorySlug}", story.Slug);
+            evaluated = null;
+        }
+
+        if (evaluated is null)
+        {
+            return;
+        }
+
+        if (story.Comparison is null)
+        {
+            evaluated.StoryId = story.Id;
+            story.Comparison = evaluated;
+            db.StoryComparisons.Add(evaluated);
+            return;
+        }
+
+        story.Comparison.Points = evaluated.Points;
+        story.Comparison.Provider = evaluated.Provider;
+        story.Comparison.Model = evaluated.Model;
+        story.Comparison.ClassifierVersion = evaluated.ClassifierVersion;
+        story.Comparison.GeneratedAt = evaluated.GeneratedAt;
+        story.Comparison.UpdatedAt = now;
     }
 
     private void ApplySummary(Story story, StorySummaryResult result, DateTimeOffset now)

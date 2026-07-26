@@ -93,6 +93,11 @@ public static class StoryProjections
                     a.PublishedAt,
                     a.Title))
                 .ToList(),
+            Comparison = story.Comparison is null
+                ? []
+                : story.Comparison.Points
+                    .Select(p => new ComparisonPointDto(p.Text, p.Kind, p.Sources, p.Quote, p.QuoteSource))
+                    .ToList(),
             Links = story.Links
                 .OrderBy(l => l.Position)
                 .Select(l => new StoryLinkDto(l.Kind, l.Url, l.Title, l.Description, l.ThumbnailUrl))

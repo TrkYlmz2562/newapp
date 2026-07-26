@@ -109,6 +109,18 @@ export interface Analysis {
   confidence: number;
 }
 
+export type ComparisonKind = 'Shared' | 'Divergent' | 'Unique';
+
+export interface ComparisonPoint {
+  text: string;
+  kind: ComparisonKind;
+  /** Outlets this observation applies to, by name. */
+  sources: string[];
+  /** Verbatim sentence from `quoteSource` — the reader's way to check the claim. */
+  quote: string;
+  quoteSource: string;
+}
+
 export interface StoryLink {
   kind: StoryLinkKind;
   url: string;
@@ -139,6 +151,7 @@ export interface StoryDetail {
   analysis?: Analysis | null;
   sources: SourceRef[];
   links: StoryLink[];
+  comparison: ComparisonPoint[];
   topics: Topic[];
   related: StoryCard[];
   isBookmarked: boolean;

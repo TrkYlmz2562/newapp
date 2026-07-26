@@ -28,6 +28,7 @@ public sealed class GetStoryDetailQueryHandler(
             .Include(s => s.Summary)
             .Include(s => s.Analysis)
             .Include(s => s.Trust)
+            .Include(s => s.Comparison)
             .Include(s => s.Links)
             .Include(s => s.Topics).ThenInclude(t => t.Topic)
             .Include(s => s.Articles).ThenInclude(a => a.Source)

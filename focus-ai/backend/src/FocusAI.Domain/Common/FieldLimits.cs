@@ -53,6 +53,9 @@ public static class FieldLimits
     /// <summary>"Resmî Gazete, 12 Temmuz 2026, 33012 sayılı".</summary>
     public const int CommitmentReference = 300;
 
+    /// <summary>One coverage observation, one sentence.</summary>
+    public const int ComparisonPoint = 300;
+
     /// <summary>
     /// Upper bound on how many interests a user may select. Comfortably above
     /// the seeded topic count (~43) so "select all" works, while still capping

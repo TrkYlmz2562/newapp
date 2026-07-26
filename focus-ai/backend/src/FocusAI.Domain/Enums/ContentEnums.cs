@@ -78,3 +78,16 @@ public enum StoryLinkKind
     Discussion = 4,
     Documentation = 5
 }
+
+/// <summary>What a coverage observation says about the outlets that reported it.</summary>
+public enum ComparisonKind
+{
+    /// <summary>Every source that covered the story reports this.</summary>
+    Shared = 0,
+
+    /// <summary>Sources state it differently — different figure, scope or framing.</summary>
+    Divergent = 1,
+
+    /// <summary>Only one source reports it at all.</summary>
+    Unique = 2
+}
