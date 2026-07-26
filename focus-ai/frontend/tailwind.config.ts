@@ -43,7 +43,22 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ['var(--font-sans)', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
+        /*
+         * The broadsheet is set in two faces and no more.
+         *
+         * `serif` is the voice — headlines and body are the same family at
+         * different optical sizes, which is what makes a front page read as one
+         * page rather than as a headline pasted above some text.
+         *
+         * `sans` is furniture only: flags, folios, figures, nav. Archivo's width
+         * axis is set per-use in globals.css, because Turkish labels need the
+         * narrow cut to fit slots English would leave room in.
+         *
+         * `mono` is deliberately absent — the terminal costume is gone, and every
+         * former font-mono is now condensed Archivo caps.
+         */
+        serif: ['var(--font-display)', 'Georgia', 'serif'],
+        sans: ['var(--font-gothic)', 'system-ui', '-apple-system', 'sans-serif'],
       },
       maxWidth: {
         reader: '46rem',
