@@ -133,6 +133,103 @@ public class PersonalizationScorerTests
     }
 
     [Fact]
+    public void Downranked_story_is_demoted_but_never_removed()
+    {
+        var id = Guid.NewGuid();
+        var reader = Reader() with { DownrankedStoryIds = new HashSet<Guid> { id } };
+
+        var result = PersonalizationScorer.Score(Story(id, importance: 90), reader);
+
+        // "Az göster" is not a mute: the reader asked for less of this, not for it
+        // to be hidden from them, so the story stays rankable.
+        Assert.False(result.IsSuppressed);
+        Assert.True(result.Score > 0d);
+        Assert.True(result.Score < PersonalizationScorer.Score(Story(id, importance: 90), Reader()).Score);
+    }
+
+    [Fact]
+    public void Positive_topic_feedback_lifts_and_negative_lowers()
+    {
+        var liked = Reader() with { TopicFeedback = new Dictionary<Guid, double> { [Angular] = 1.0 } };
+        var disliked = Reader() with { TopicFeedback = new Dictionary<Guid, double> { [Angular] = -1.0 } };
+
+        var up = PersonalizationScorer.Score(Story(Guid.NewGuid(), topic: Angular), liked);
+        var neutral = PersonalizationScorer.Score(Story(Guid.NewGuid(), topic: Angular), Reader());
+        var down = PersonalizationScorer.Score(Story(Guid.NewGuid(), topic: Angular), disliked);
+
+        Assert.True(up.Score > neutral.Score);
+        Assert.True(down.Score < neutral.Score);
+    }
+
+    [Fact]
+    public void Topic_feedback_cannot_bury_a_major_story()
+    {
+        var reader = Reader() with { TopicFeedback = new Dictionary<Guid, double> { [Angular] = -1.0 } };
+
+        var major = PersonalizationScorer.Score(Story(Guid.NewGuid(), importance: 100, topic: Angular), reader);
+        var minor = PersonalizationScorer.Score(Story(Guid.NewGuid(), importance: 20, topic: Angular), Reader());
+
+        // The swing is bounded, so a few taps tilt the feed without letting the
+        // reader accidentally opt out of the day's biggest development.
+        Assert.True(major.Score > minor.Score);
+    }
+
+    [Fact]
+    public void Mixed_feedback_across_a_story_topics_lands_near_neutral()
+    {
+        var reader = Reader() with
+        {
+            TopicFeedback = new Dictionary<Guid, double> { [DotNet] = 1.0, [Angular] = -1.0 }
+        };
+
+        var mixed = new RankableStory
+        {
+            StoryId = Guid.NewGuid(),
+            ImportanceScore = 50,
+            TrustScore = 60,
+            PublishedAt = Now,
+            PrimarySourceId = SourceA,
+            Topics = new Dictionary<Guid, double> { [DotNet] = 1.0, [Angular] = 1.0 }
+        };
+
+        var withFeedback = PersonalizationScorer.Score(mixed, reader);
+        var withoutFeedback = PersonalizationScorer.Score(mixed, Reader());
+
+        // The mean, not the loudest tap: a story touching a liked and a disliked
+        // topic should not inherit whichever the reader pressed most recently.
+        Assert.Equal(withoutFeedback.Score, withFeedback.Score, 4);
+    }
+
+    [Fact]
+    public void Feedback_on_an_untouched_topic_changes_nothing()
+    {
+        var reader = Reader() with { TopicFeedback = new Dictionary<Guid, double> { [Crypto] = 1.0 } };
+
+        var story = Story(Guid.NewGuid(), topic: Angular);
+
+        Assert.Equal(
+            PersonalizationScorer.Score(story, Reader()).Score,
+            PersonalizationScorer.Score(story, reader).Score,
+            4);
+    }
+
+    [Fact]
+    public void Feedback_is_named_as_the_reason_when_it_moved_the_story()
+    {
+        var liked = Reader() with { TopicFeedback = new Dictionary<Guid, double> { [Angular] = 1.0 } };
+        var disliked = Reader() with { TopicFeedback = new Dictionary<Guid, double> { [Angular] = -1.0 } };
+
+        // The reader's own tap is the honest explanation for where a story landed.
+        Assert.Equal(
+            "Bu konuya faydalı dedin.",
+            PersonalizationScorer.Score(Story(Guid.NewGuid(), topic: Angular), liked).Reason);
+
+        Assert.Equal(
+            "Bu konudan daha az istemiştin.",
+            PersonalizationScorer.Score(Story(Guid.NewGuid(), topic: Angular), disliked).Reason);
+    }
+
+    [Fact]
     public void Rank_respects_the_take_limit_and_returns_descending_scores()
     {
         var stories = Enumerable.Range(1, 30)

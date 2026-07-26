@@ -78,6 +78,13 @@ public sealed record StoryCardDto
     /// </summary>
     public bool IsRead { get; init; }
 
+    /// <summary>
+    /// This reader's own verdict, when they gave one: <c>Helpful</c> or
+    /// <c>NotHelpful</c>. Null means they have not said. Sent so the buttons
+    /// still show the choice after a reload.
+    /// </summary>
+    public InteractionType? Feedback { get; init; }
+
     /// <summary>Why this card is in front of this reader — filled by ranked endpoints only.</summary>
     public string? Reason { get; init; }
 }
@@ -136,6 +143,9 @@ public sealed record StoryDetailDto
     public IReadOnlyList<StoryCardDto> Related { get; init; } = [];
 
     public bool IsBookmarked { get; init; }
+
+    /// <summary>This reader's own verdict, when they gave one. See <see cref="StoryCardDto.Feedback"/>.</summary>
+    public InteractionType? Feedback { get; init; }
 
     /// <summary>
     /// Stack-specific note picked out of <see cref="AnalysisDto.StackNotes"/> for

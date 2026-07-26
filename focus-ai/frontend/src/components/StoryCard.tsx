@@ -14,6 +14,7 @@ import {
 } from '@/lib/format';
 import type { StoryCard as Story } from '@/lib/types';
 import { StoryVisual } from './StoryVisual';
+import { FeedbackButtons } from './FeedbackButtons';
 import { useAuth } from './AuthProvider';
 
 interface Props {
@@ -153,6 +154,14 @@ export function StoryCard({ story, rank, variant = 'default' }: Props) {
             </span>
             <span className="font-bold text-ink-900 dark:text-ink-50">{story.trustScore}</span>
             <span className="ml-auto">{story.readingMinutes} dk</span>
+            {!isCompact && (
+              <FeedbackButtons
+                storyId={story.id}
+                initial={story.feedback}
+                surface="card"
+                className="-my-1"
+              />
+            )}
             {user && (
               <button
                 type="button"

@@ -29,6 +29,18 @@ public sealed class ReaderContextFactory(IApplicationDbContext db) : IReaderCont
     /// <summary>How many recent opens feed the taste vector. Short window keeps it responsive.</summary>
     private const int TasteWindowSize = 40;
 
+    /// <summary>
+    /// How many explicit taps are considered. Deliberately much wider than the taste
+    /// window: an opinion the reader stated by hand should outlive forty page opens.
+    /// </summary>
+    private const int FeedbackWindowSize = 200;
+
+    /// <summary>
+    /// Net taps on one topic needed for a full-strength signal. Three, so a single
+    /// mistap barely registers while a consistent opinion arrives quickly.
+    /// </summary>
+    private const int FeedbackSaturation = 3;
+
     private static readonly ReaderSnapshot Anonymous = new(
         new ReaderContext(),
         [],
@@ -86,12 +98,83 @@ public sealed class ReaderContextFactory(IApplicationDbContext db) : IReaderCont
             .Select(i => i.StoryId)
             .ToListAsync(cancellationToken);
 
+        // Rating a story is an opinion, not consumption: a reader who taps "faydalı"
+        // from the feed has not read it yet, and demoting it as seen would make the
+        // story vanish as a reward for liking it. "Az göster" carries its own,
+        // heavier penalty, so it does not need this one either.
         var seen = await db.Interactions
             .AsNoTracking()
-            .Where(i => i.UserId == id && i.Type != InteractionType.Impression)
+            .Where(i => i.UserId == id &&
+                        i.Type != InteractionType.Impression &&
+                        i.Type != InteractionType.Helpful &&
+                        i.Type != InteractionType.NotHelpful)
             .Select(i => i.StoryId)
             .Distinct()
             .ToListAsync(cancellationToken);
+
+        // Explicit feedback: what the reader keeps telling us, as opposed to the
+        // interests they declared once during onboarding.
+        var feedbackRows = await db.Interactions
+            .AsNoTracking()
+            .Where(i => i.UserId == id &&
+                        (i.Type == InteractionType.Helpful || i.Type == InteractionType.NotHelpful))
+            .OrderByDescending(i => i.OccurredAt)
+            .Take(FeedbackWindowSize)
+            .Select(i => new { i.StoryId, i.Type })
+            .ToListAsync(cancellationToken);
+
+        // Interactions are append-only, so one story can carry several rows — a reader
+        // who changed their mind, or double-tapped. Only the newest verdict per story
+        // counts; otherwise repeated taps on a single story would saturate its topics.
+        var feedback = feedbackRows
+            .GroupBy(f => f.StoryId)
+            .Select(g => g.First())
+            .ToList();
+
+        var downranked = feedback
+            .Where(f => f.Type == InteractionType.NotHelpful)
+            .Select(f => f.StoryId)
+            .ToHashSet();
+
+        var topicFeedback = new Dictionary<Guid, double>();
+
+        if (feedback.Count > 0)
+        {
+            var feedbackStoryIds = feedback.Select(f => f.StoryId).ToList();
+
+            var storyTopics = await db.Stories
+                .AsNoTracking()
+                .Where(s => feedbackStoryIds.Contains(s.Id))
+                .SelectMany(s => s.Topics.Select(st => new { st.StoryId, st.TopicId }))
+                .ToListAsync(cancellationToken);
+
+            var byStory = storyTopics
+                .GroupBy(st => st.StoryId)
+                .ToDictionary(g => g.Key, g => g.Select(st => st.TopicId).ToList());
+
+            var tally = new Dictionary<Guid, int>();
+
+            foreach (var entry in feedback)
+            {
+                if (!byStory.TryGetValue(entry.StoryId, out var topicIds))
+                {
+                    continue;
+                }
+
+                var delta = entry.Type == InteractionType.Helpful ? 1 : -1;
+                foreach (var topicId in topicIds)
+                {
+                    tally[topicId] = tally.GetValueOrDefault(topicId) + delta;
+                }
+            }
+
+            // Normalised so a topic needs repeated agreement to reach full strength;
+            // one tap should nudge the feed, not redefine it.
+            foreach (var (topicId, net) in tally)
+            {
+                topicFeedback[topicId] = Math.Clamp(net / (double)FeedbackSaturation, -1d, 1d);
+            }
+        }
 
         var embeddings = await db.Stories
             .AsNoTracking()
@@ -105,6 +188,8 @@ public sealed class ReaderContextFactory(IApplicationDbContext db) : IReaderCont
             MutedTopicIds = muted.ToHashSet(),
             FavoriteSourceIds = favorites.ToHashSet(),
             SeenStoryIds = seen.ToHashSet(),
+            DownrankedStoryIds = downranked,
+            TopicFeedback = topicFeedback,
             TasteVector = VectorMath.Centroid(embeddings)
         };
 

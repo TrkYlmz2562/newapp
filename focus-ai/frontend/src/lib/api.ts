@@ -224,6 +224,14 @@ export const api = {
         method: 'POST',
         body: { type, dwellSeconds, surface },
       }),
+
+    /**
+     * Retracts a "faydalı" / "az göster" verdict. Interactions are append-only and
+     * the ranker reads the newest one, so getting back to "no opinion" needs a
+     * delete rather than another POST.
+     */
+    clearFeedback: (storyId: string) =>
+      request<void>(`/api/stories/${storyId}/interactions/feedback`, { method: 'DELETE' }),
   },
 
   finance: {

@@ -75,8 +75,13 @@ export interface StoryCard {
   isBookmarked: boolean;
   /** This reader already opened it — the reason the ranker pushed it down. */
   isRead: boolean;
+  /** This reader's own verdict, when they gave one. Null means they have not said. */
+  feedback?: StoryFeedback | null;
   reason?: string | null;
 }
+
+/** The two verdicts the feedback buttons can record. */
+export type StoryFeedback = Extract<InteractionType, 'Helpful' | 'NotHelpful'>;
 
 export interface SourceRef {
   id: string;
@@ -157,6 +162,8 @@ export interface StoryDetail {
   topics: Topic[];
   related: StoryCard[];
   isBookmarked: boolean;
+  /** This reader's own verdict, when they gave one. Null means they have not said. */
+  feedback?: StoryFeedback | null;
   personalNote?: string | null;
 }
 

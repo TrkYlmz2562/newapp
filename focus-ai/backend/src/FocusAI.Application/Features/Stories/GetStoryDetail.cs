@@ -48,6 +48,19 @@ public sealed class GetStoryDetailQueryHandler(
             .AsNoTracking()
             .AnyAsync(b => b.UserId == userId && b.StoryId == story.Id, cancellationToken);
 
+        // Newest verdict wins — interactions are append-only, so a changed mind
+        // leaves both rows behind.
+        var feedback = userId is null
+            ? null
+            : await db.Interactions
+                .AsNoTracking()
+                .Where(i => i.UserId == userId &&
+                            i.StoryId == story.Id &&
+                            (i.Type == InteractionType.Helpful || i.Type == InteractionType.NotHelpful))
+                .OrderByDescending(i => i.OccurredAt)
+                .Select(i => (InteractionType?)i.Type)
+                .FirstOrDefaultAsync(cancellationToken);
+
         var personalNote = story.Analysis is null
             ? null
             : StoryProjections.PickPersonalNote(story.Analysis.StackNotes, snapshot.InterestSlugs);
@@ -57,6 +70,7 @@ public sealed class GetStoryDetailQueryHandler(
         return detail with
         {
             IsBookmarked = isBookmarked,
+            Feedback = feedback,
             PersonalNote = personalNote,
             Related = related
         };

@@ -31,8 +31,18 @@ public sealed record ReaderContext
 
     public IReadOnlySet<Guid> FavoriteSourceIds { get; init; } = new HashSet<Guid>();
 
-    /// <summary>Stories already opened; suppressed from the feed but not from search.</summary>
+    /// <summary>Stories already opened. Demoted, never removed — see SeenPenalty.</summary>
     public IReadOnlySet<Guid> SeenStoryIds { get; init; } = new HashSet<Guid>();
+
+    /// <summary>Stories the reader explicitly asked to see less of.</summary>
+    public IReadOnlySet<Guid> DownrankedStoryIds { get; init; } = new HashSet<Guid>();
+
+    /// <summary>
+    /// Topic id → net feedback in [-1,1], from the reader pressing "faydalı" or
+    /// "az göster" on stories carrying that topic. Distinct from Interests, which
+    /// the reader declared once at onboarding: this is what they keep telling us.
+    /// </summary>
+    public IReadOnlyDictionary<Guid, double> TopicFeedback { get; init; } = new Dictionary<Guid, double>();
 
     /// <summary>Centroid of recently-read stories. Catches interests the user never declared.</summary>
     public float[]? TasteVector { get; init; }
@@ -55,6 +65,20 @@ public static class PersonalizationScorer
     /// <summary>Multiplier applied to stories the reader already opened.</summary>
     private const double SeenPenalty = 0.25;
 
+    /// <summary>
+    /// Multiplier for a story the reader pressed "az göster" on. Deliberately a
+    /// heavy demotion rather than a hard filter: the reader asked for less of
+    /// this, not for it to be censored, and a story big enough can still surface.
+    /// </summary>
+    private const double DownrankPenalty = 0.15;
+
+    /// <summary>
+    /// How far accumulated topic feedback can move a score, either way. Bounded so
+    /// a handful of taps cannot bury a genuinely major story, and so an early
+    /// mistake stays recoverable by tapping the other way.
+    /// </summary>
+    private const double FeedbackSwing = 0.35;
+
     public static RankedStory Score(RankableStory story, ReaderContext reader)
     {
         if (story.Topics.Keys.Any(reader.MutedTopicIds.Contains))
@@ -72,15 +96,26 @@ public static class PersonalizationScorer
             taste * TasteWeight +
             sourceAffinity * SourceAffinityWeight;
 
+        var feedback = TopicFeedbackSignal(story, reader);
+        if (feedback != 0d)
+        {
+            score *= 1d + feedback * FeedbackSwing;
+        }
+
         if (reader.SeenStoryIds.Contains(story.StoryId))
         {
             score *= SeenPenalty;
         }
 
+        if (reader.DownrankedStoryIds.Contains(story.StoryId))
+        {
+            score *= DownrankPenalty;
+        }
+
         return new RankedStory(
             story.StoryId,
             Math.Round(Math.Clamp(score, 0d, 100d), 4),
-            BuildReason(story, interest, topInterestWeight, sourceAffinity > 0),
+            BuildReason(story, interest, topInterestWeight, sourceAffinity > 0, feedback),
             IsSuppressed: false);
     }
 
@@ -96,6 +131,35 @@ public static class PersonalizationScorer
             .ThenByDescending(result => result.StoryId)
             .Take(take)
             .ToList();
+    }
+
+    /// <summary>
+    /// Mean feedback across the topics this story carries, so a story touching one
+    /// liked topic and one disliked topic lands near neutral rather than inheriting
+    /// whichever the reader pressed most recently.
+    /// </summary>
+    private static double TopicFeedbackSignal(RankableStory story, ReaderContext reader)
+    {
+        if (reader.TopicFeedback.Count == 0 || story.Topics.Count == 0)
+        {
+            return 0d;
+        }
+
+        var total = 0d;
+        var matched = 0;
+
+        foreach (var topicId in story.Topics.Keys)
+        {
+            if (!reader.TopicFeedback.TryGetValue(topicId, out var signal))
+            {
+                continue;
+            }
+
+            total += signal;
+            matched++;
+        }
+
+        return matched == 0 ? 0d : Math.Clamp(total / matched, -1d, 1d);
     }
 
     /// <summary>
@@ -145,8 +209,21 @@ public static class PersonalizationScorer
         RankableStory story,
         double interest,
         double topInterestWeight,
-        bool favoriteSource)
+        bool favoriteSource,
+        double feedback)
     {
+        // Named before the other reasons: when the reader's own taps moved a story,
+        // that is the honest explanation for where it landed.
+        if (feedback >= 0.5)
+        {
+            return "Bu konuya faydalı dedin.";
+        }
+
+        if (feedback <= -0.5)
+        {
+            return "Bu konudan daha az istemiştin.";
+        }
+
         if (interest >= 60 && topInterestWeight > 0)
         {
             return "İlgi alanlarınla doğrudan ilgili.";

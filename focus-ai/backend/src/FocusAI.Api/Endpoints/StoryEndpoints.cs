@@ -70,6 +70,21 @@ public static class StoryEndpoints
             .WithSummary("Okuma/kaydetme gibi etkileşimleri kaydeder.")
             .RequireAuthorization();
 
+        group.MapDelete("/{storyId:guid}/interactions/feedback", async (
+                Guid storyId,
+                ISender sender,
+                CancellationToken ct) =>
+            {
+                await sender.Send(new ClearStoryFeedbackCommand(storyId), ct);
+                return Results.NoContent();
+            })
+            .WithSummary("\"Faydalı\" / \"az göster\" tercihini geri alır.")
+            .WithDescription(
+                "Etkileşimler normalde silinmez; sıralama her haber için en son " +
+                "tercihi okuduğundan \"tercihim yok\" durumuna dönmenin tek yolu budur. " +
+                "Yalnızca bu haberdeki bu iki tercih silinir, okuma geçmişi korunur.")
+            .RequireAuthorization();
+
         app.MapGet("/api/search", async (
                 [FromQuery] string q,
                 [FromQuery] int? page,

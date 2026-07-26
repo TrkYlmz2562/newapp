@@ -7,6 +7,7 @@ import { useAuth } from '@/components/AuthProvider';
 import { ErrorState } from '@/components/Shell';
 import { StoryCard, StoryCardSkeleton } from '@/components/StoryCard';
 import { CoverageComparison } from '@/components/CoverageComparison';
+import { FeedbackButtons } from '@/components/FeedbackButtons';
 import { ShareButton } from '@/components/ShareButton';
 import { StoryVisual } from '@/components/StoryVisual';
 import { TrustPanel } from '@/components/TrustBadge';
@@ -134,6 +135,7 @@ export default function StoryPage() {
           ← Geri
         </Link>
         <div className="flex items-center gap-2">
+          <FeedbackButtons storyId={story.id} initial={story.feedback} surface="detail" />
           <ShareButton story={story} />
           {user && (
             <button

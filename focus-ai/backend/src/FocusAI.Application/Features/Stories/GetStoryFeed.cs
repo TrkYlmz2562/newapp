@@ -190,13 +190,27 @@ public sealed class GetStoryFeedQueryHandler(
             .Distinct()
             .ToListAsync(cancellationToken);
 
-        if (bookmarked.Count == 0 && read.Count == 0)
+        // Newest verdict wins: interactions are append-only, so a reader who changed
+        // their mind has both rows and only the last one is what they think now.
+        var verdicts = await db.Interactions
+            .AsNoTracking()
+            .Where(i => i.UserId == userId &&
+                        ids.Contains(i.StoryId) &&
+                        (i.Type == InteractionType.Helpful || i.Type == InteractionType.NotHelpful))
+            .OrderByDescending(i => i.OccurredAt)
+            .Select(i => new { i.StoryId, i.Type })
+            .ToListAsync(cancellationToken);
+
+        if (bookmarked.Count == 0 && read.Count == 0 && verdicts.Count == 0)
         {
             return result;
         }
 
         var saved = bookmarked.ToHashSet();
         var seen = read.ToHashSet();
+        var feedback = verdicts
+            .GroupBy(v => v.StoryId)
+            .ToDictionary(g => g.Key, g => g.First().Type);
 
         return result with
         {
@@ -204,7 +218,8 @@ public sealed class GetStoryFeedQueryHandler(
                 .Select(i => i with
                 {
                     IsBookmarked = i.IsBookmarked || saved.Contains(i.Id),
-                    IsRead = seen.Contains(i.Id)
+                    IsRead = seen.Contains(i.Id),
+                    Feedback = feedback.TryGetValue(i.Id, out var verdict) ? verdict : null
                 })
                 .ToList()
         };
