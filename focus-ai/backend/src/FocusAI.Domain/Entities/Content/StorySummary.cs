@@ -32,6 +32,15 @@ public class StorySummary : AuditableEntity
     /// <summary>Longer body unlocked for Premium (PRD section 16).</summary>
     public string? ExtendedSummary { get; set; }
 
+    /// <summary>
+    /// The subject the card sets in display type — "M5", "OpenSSH", "20M$".
+    /// Always a literal term from the story, never a coined phrase.
+    /// </summary>
+    public string? VisualEntity { get; set; }
+
+    /// <summary>One-line descriptor shown under the subject ("Muhakeme modeli").</summary>
+    public string? VisualKicker { get; set; }
+
     public string? Provider { get; set; }
 
     public string? Model { get; set; }

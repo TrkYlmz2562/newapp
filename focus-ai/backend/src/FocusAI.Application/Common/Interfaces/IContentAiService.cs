@@ -45,6 +45,16 @@ public sealed record StorySummaryResult
 
     public int ReadingMinutes { get; init; } = 1;
 
+    /// <summary>
+    /// The term the card sets in display type ("M5", "OpenSSH", "20M$"). Must be
+    /// a literal string from the story; the handler re-derives it from the title
+    /// when the model leaves it empty.
+    /// </summary>
+    public string? VisualEntity { get; init; }
+
+    /// <summary>One-line descriptor under the subject ("Muhakeme modeli").</summary>
+    public string? VisualKicker { get; init; }
+
     public string Provider { get; init; } = "none";
 
     public string Model { get; init; } = "none";

@@ -36,7 +36,10 @@ public sealed class ContentAiService(
                 SystemPrompt = Prompts.SummarySystem,
                 Messages = [LlmMessage.User(BuildStoryPrompt(context))],
                 JsonMode = true,
-                MaxTokens = 1400,
+                // Headroom for the visual fields: a response truncated mid-JSON
+                // does not lose just those keys, it drops the whole summary to
+                // the extractive fallback.
+                MaxTokens = 1500,
                 Operation = "summary"
             },
             cancellationToken);
@@ -72,6 +75,8 @@ public sealed class ContentAiService(
             Importance = Math.Clamp(JsonExtractor.GetDouble(root, "importance", 0.5), 0d, 1d),
             TechnicalAccuracy = Math.Clamp(JsonExtractor.GetDouble(root, "technicalAccuracy", 0.6), 0d, 1d),
             ReadingMinutes = Math.Clamp(JsonExtractor.GetInt(root, "readingMinutes", 2), 1, 15),
+            VisualEntity = JsonExtractor.GetString(root, "visualEntity"),
+            VisualKicker = JsonExtractor.GetString(root, "visualKicker"),
             Provider = client.Provider.ToString(),
             Model = response.Model,
             PromptTokens = response.PromptTokens,

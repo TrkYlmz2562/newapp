@@ -160,7 +160,7 @@ export default function StoryPage() {
         {dek && <p className="text-base text-ink-600 dark:text-ink-300">{dek}</p>}
       </header>
 
-      <StoryVisual story={story} className="h-56 w-full rounded-2xl sm:h-72" showTag={false} />
+      <StoryVisual story={story} className="h-56 w-full rounded-2xl sm:h-72" size="hero" />
 
       {story.personalNote && (
         <aside className="rounded-2xl border-l-4 border-focus-500 bg-focus-50 p-4 dark:bg-focus-900/30">

@@ -36,6 +36,16 @@ public static class FieldLimits
     public const int ModelName = 100;
 
     /// <summary>
+    /// The subject shown in display type on the card ("M5", "OpenSSH", "20M$").
+    /// Short by design: past roughly this length it stops working as a poster
+    /// term and has to be set so small that it no longer reads at a glance.
+    /// </summary>
+    public const int VisualEntity = 24;
+
+    /// <summary>The one-line descriptor under the subject ("MUHAKEME MODELİ").</summary>
+    public const int VisualKicker = 48;
+
+    /// <summary>
     /// Upper bound on how many interests a user may select. Comfortably above
     /// the seeded topic count (~43) so "select all" works, while still capping
     /// a malicious client from posting thousands of slugs.

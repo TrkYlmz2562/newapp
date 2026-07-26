@@ -64,23 +64,26 @@ export const CATEGORY_EMOJI: Record<ContentCategory, string> = {
 };
 
 /**
- * Two-stop gradients per category, used to draw a generated illustration when a
- * story has no real image. Kept as explicit hex pairs (not Tailwind classes) so
- * they render via inline styles — no purge surprises — and read well on both the
- * light and dark card, since the tile is always a saturated colour with white marks.
+ * One accent per category, in a light and a dark variant.
+ *
+ * Both are needed because the accent is used as ink on the card, not as a fill:
+ * a mid-tone that reads well on white (#3f4b60) disappears on the dark surface,
+ * and inverting programmatically muddies the hues. Kept as hex rather than
+ * Tailwind classes so they can be handed to inline styles as CSS variables — no
+ * purge surprises, and the theme still picks the right one via a `.dark` rule.
  */
-export const CATEGORY_ART: Record<ContentCategory, [string, string]> = {
-  Unknown: ['#3f4b60', '#151b28'],
-  Ai: ['#7c3aed', '#c026d3'],
-  Software: ['#2563eb', '#1531c0'],
-  OpenSource: ['#059669', '#0c5f68'],
-  Startup: ['#f97316', '#c81e5b'],
-  Science: ['#0891b2', '#4338ca'],
-  Career: ['#0d9488', '#0369a1'],
-  Tools: ['#d97706', '#b45309'],
-  Security: ['#e11d48', '#7a1230'],
-  Hardware: ['#3f4b60', '#151b28'],
-  Product: ['#db2777', '#9333ea'],
+export const CATEGORY_ACCENT: Record<ContentCategory, { light: string; dark: string }> = {
+  Unknown: { light: '#4c5a74', dark: '#94a3b8' },
+  Ai: { light: '#6d3bd8', dark: '#a78bfa' },
+  Software: { light: '#1d4ed8', dark: '#60a5fa' },
+  OpenSource: { light: '#047857', dark: '#34d399' },
+  Startup: { light: '#c2410c', dark: '#fb923c' },
+  Science: { light: '#0e7490', dark: '#38bdf8' },
+  Career: { light: '#0f766e', dark: '#2dd4bf' },
+  Tools: { light: '#b45309', dark: '#fbbf24' },
+  Security: { light: '#be123c', dark: '#fb7185' },
+  Hardware: { light: '#475569', dark: '#a3b3c9' },
+  Product: { light: '#be185d', dark: '#f472b6' },
 };
 
 /** Terminal-style path segment for the card's title bar: `focus:~/<slug>`. ASCII only. */

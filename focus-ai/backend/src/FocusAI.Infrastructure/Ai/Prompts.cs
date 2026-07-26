@@ -36,11 +36,20 @@ internal static class Prompts
           "category": "Ai | Software | OpenSource | Startup | Science | Career | Tools | Security | Hardware | Product",
           "importance": 0.0-1.0,
           "technicalAccuracy": 0.0-1.0,
-          "readingMinutes": 1-10
+          "readingMinutes": 1-10,
+          "visualEntity": "haberin öznesi: ürün/sürüm/şirket adı ya da kilit rakam (en fazla 24 karakter)",
+          "visualKicker": "özneyi tamamlayan kısa tanım, isim tamlaması (en fazla 48 karakter)"
         }
 
         importance: geliştiricilerin bugün bilmesi gerekiyorsa 1'e yakın, sadece merak konusuysa 0'a yakın.
         technicalAccuracy: haber somut teknik detay içeriyorsa 1'e yakın, pazarlama dili ise 0'a yakın.
+
+        visualEntity kart görselinde çok büyük puntoyla basılır, o yüzden:
+        - Kaynakta GEÇEN bir ifade olmalı; uydurma. Emin değilsen null bırak.
+        - Tek başına anlamlı olmalı: "M5", "OpenSSH", "React 20", "20M$", "CVE-2026-1234".
+        - Genel kelime yazma: "yapay zekâ", "teknoloji", "şirket", "güncelleme" OLMAZ.
+        - Cümle değil, etikettir. Fiil kullanma.
+        visualKicker örnek: "Muhakeme modeli", "Kritik açık · acil yama", "Çip mimarisi".
         """;
 
     public const string AnalysisSystem = """

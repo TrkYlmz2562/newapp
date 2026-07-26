@@ -43,6 +43,17 @@ public static class AdminEndpoints
             .WithSummary("Taslak haberler için AI özeti ve analizi üretir.")
             .Produces<IngestionReportDto>();
 
+        group.MapPost("/backfill-images", async (
+                [FromQuery] int? batchSize,
+                ISender sender,
+                CancellationToken ct) =>
+                Results.Ok(await sender.Send(new BackfillImagesCommand(batchSize ?? 50), ct)))
+            .WithSummary("Görseli olmayan eski makaleler için sayfayı bir kez tarayıp og:image çeker.")
+            .WithDescription(
+                "Tek seferlik onarım. Her çağrı en fazla batchSize makale tarar; " +
+                "kalan sayı yanıttaki articlesRemaining alanında döner, sıfırlanana kadar tekrar çağırın.")
+            .Produces<ImageBackfillReportDto>();
+
         group.MapPost("/pipeline", async (ISender sender, CancellationToken ct) =>
             {
                 // Full pipeline in order — the shape PRD section 13 describes.

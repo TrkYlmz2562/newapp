@@ -90,6 +90,7 @@ public class FieldLimitsTests
     [InlineData(FieldLimits.KeyPoint)]
     [InlineData(FieldLimits.ProviderName)]
     [InlineData(FieldLimits.ModelName)]
+    [InlineData(FieldLimits.VisualKicker)]
     public void Every_declared_limit_actually_bounds_its_field(int limit)
     {
         var overlong = string.Join(' ', Enumerable.Repeat("uzunbirkelime", 4000));

@@ -120,6 +120,14 @@ public sealed record AskResultDto(
     IReadOnlyList<StoryCardDto> Citations);
 
 /// <summary>Outcome of one ingestion cycle, surfaced on the admin/ops endpoint.</summary>
+/// <summary>Result of the one-off image backfill over already-ingested articles.</summary>
+public sealed record ImageBackfillReportDto(
+    int ArticlesScanned,
+    int ImagesFound,
+    int NoImageOnPage,
+    int StoriesUpdated,
+    int ArticlesRemaining);
+
 public sealed record IngestionReportDto(
     int SourcesPolled,
     int ItemsFetched,

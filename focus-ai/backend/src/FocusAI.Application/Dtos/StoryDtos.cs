@@ -55,6 +55,12 @@ public sealed record StoryCardDto
 
     public string? HeroImageUrl { get; init; }
 
+    /// <summary>Subject the card sets in display type when there is no photo.</summary>
+    public string? VisualEntity { get; init; }
+
+    /// <summary>One-line descriptor shown under the subject.</summary>
+    public string? VisualKicker { get; init; }
+
     public required DateTimeOffset PublishedAt { get; init; }
 
     public required int TrustScore { get; init; }
@@ -91,6 +97,12 @@ public sealed record StoryDetailDto
     public required DateTimeOffset LastActivityAt { get; init; }
 
     public string? HeroImageUrl { get; init; }
+
+    /// <summary>Subject the hero sets in display type when there is no photo.</summary>
+    public string? VisualEntity { get; init; }
+
+    /// <summary>One-line descriptor shown under the subject.</summary>
+    public string? VisualKicker { get; init; }
 
     public required int ReadingMinutes { get; init; }
 

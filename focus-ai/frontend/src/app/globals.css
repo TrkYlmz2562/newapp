@@ -77,6 +77,44 @@
     @apply animate-pulse rounded-lg bg-ink-200/70 dark:bg-ink-800;
   }
 
+  /*
+   * Category accent, theme-aware. The component sets --accent-light and
+   * --accent-dark inline (the value depends on the story's category, so it
+   * cannot be a static class); these rules pick the right one per theme, which
+   * an inline style alone could not do.
+   */
+  .accent-ink {
+    color: var(--accent-light);
+  }
+
+  .accent-field {
+    background-color: color-mix(in srgb, var(--accent-light) 10%, transparent);
+  }
+
+  .accent-rule {
+    border-color: color-mix(in srgb, var(--accent-light) 30%, transparent);
+  }
+
+  .accent-glyph {
+    color: color-mix(in srgb, var(--accent-light) 55%, transparent);
+  }
+
+  .dark .accent-ink {
+    color: var(--accent-dark);
+  }
+
+  .dark .accent-field {
+    background-color: color-mix(in srgb, var(--accent-dark) 12%, transparent);
+  }
+
+  .dark .accent-rule {
+    border-color: color-mix(in srgb, var(--accent-dark) 28%, transparent);
+  }
+
+  .dark .accent-glyph {
+    color: color-mix(in srgb, var(--accent-dark) 50%, transparent);
+  }
+
   .prose-reader p {
     @apply mb-3 leading-relaxed text-ink-700 dark:text-ink-300;
   }

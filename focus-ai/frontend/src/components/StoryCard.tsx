@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { api } from '@/lib/api';
 import {
-  CATEGORY_ART,
+  CATEGORY_ACCENT,
   CATEGORY_LABELS,
   CATEGORY_SLUG,
   meaningful,
@@ -64,7 +64,9 @@ export function StoryCard({ story, rank, variant = 'default' }: Props) {
   // Suppressed when it merely repeats the headline — see meaningful().
   const blurb = meaningful(story.summary, story.title) ?? meaningful(story.dek, story.title);
 
-  const [ledColor] = CATEGORY_ART[story.category] ?? CATEGORY_ART.Unknown;
+  // The title bar sits on a fixed dark surface in both themes, so the LED always
+  // takes the brighter variant.
+  const ledColor = (CATEGORY_ACCENT[story.category] ?? CATEGORY_ACCENT.Unknown).dark;
 
   // Trust as a monospace block meter: 0–100 → ten blocks, coloured by band.
   const filled = Math.max(0, Math.min(10, Math.round(story.trustScore / 10)));
@@ -89,7 +91,11 @@ export function StoryCard({ story, rank, variant = 'default' }: Props) {
           <span className="ml-auto text-[#5f7089]">{pluralizeSources(story.sourceCount)}</span>
         </div>
 
-        <StoryVisual story={story} className={`w-full ${visualHeight}`} />
+        <StoryVisual
+          story={story}
+          className={`w-full ${visualHeight}`}
+          size={isHero ? 'hero' : isCompact ? 'compact' : 'default'}
+        />
 
         <div className="p-4 sm:p-5">
           {/* Command-line kicker */}

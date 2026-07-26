@@ -171,6 +171,15 @@ public sealed class EnrichStoriesCommandHandler(
             .Select(point => FieldLimits.Cap(point, FieldLimits.KeyPoint)!)
             .Where(point => !string.IsNullOrWhiteSpace(point))
             .ToList();
+        // The subject is validated rather than capped: it is set in display type,
+        // so a truncated term ("OpenSS…") reads as broken. Sanitize falls back to
+        // a term extracted from the headline whenever the model's answer is
+        // missing, over-long, or merely the category restated.
+        story.Summary.VisualEntity = VisualSubject.Sanitize(
+            result.VisualEntity,
+            result.Title ?? story.Title,
+            FieldLimits.VisualEntity);
+        story.Summary.VisualKicker = FieldLimits.Cap(result.VisualKicker, FieldLimits.VisualKicker);
         story.Summary.Provider = FieldLimits.Cap(result.Provider, FieldLimits.ProviderName);
         story.Summary.Model = FieldLimits.Cap(result.Model, FieldLimits.ModelName);
         story.Summary.PromptTokens = result.PromptTokens;
