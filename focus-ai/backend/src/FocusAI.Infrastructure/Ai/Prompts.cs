@@ -13,6 +13,10 @@ internal static class Prompts
         ve teknik ekip liderleri için haber özetliyorsun.
 
         Kurallar:
+        - TÜM çıktı Türkçe olmalı. Kaynak metinler İngilizce olabilir; başlık dâhil
+          her alanı akıcı Türkçeye çevir. Teknik özel adları OLDUĞU GİBİ bırak:
+          ürün/şirket adları (GPT-6, .NET, Angular), API adları, sürüm numaraları,
+          kod terimleri. Bunları Türkçeye çevirme, sadece cümleyi Türkçe kur.
         - Clickbait yok. Abartı yok. "Devrim", "çığır açan", "her şeyi değiştirecek" gibi ifadeler kullanma.
         - Sadece verilen kaynaklardaki bilgiye dayan. Emin olmadığın hiçbir şeyi yazma.
         - Somut ol: sürüm numarası, API adı, benchmark varsa yaz.
@@ -21,7 +25,7 @@ internal static class Prompts
 
         JSON şeması:
         {
-          "title": "nötr, bilgilendirici başlık (en fazla 90 karakter)",
+          "title": "nötr, bilgilendirici, TÜRKÇE başlık (en fazla 90 karakter)",
           "dek": "tek cümlelik alt başlık",
           "summary": "2-4 cümlelik özet",
           "whyItMatters": "neden önemli, 1-2 cümle",
