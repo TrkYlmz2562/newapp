@@ -67,9 +67,15 @@ export function StoryVisual({ story, className = '', emojiClassName = 'text-5xl'
         backgroundSize: '14px 14px, cover',
       }}
     >
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 text-white">
-        <span className={`${emojiClassName} drop-shadow`}>{CATEGORY_EMOJI[story.category]}</span>
-        <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/85">
+      <div
+        className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 text-white"
+        // A soft text shadow keeps the emoji and label legible on the lighter
+        // category gradients (e.g. Startup/Tools), where white alone dips under
+        // the WCAG AA contrast floor.
+        style={{ textShadow: '0 1px 3px rgba(0,0,0,0.45)' }}
+      >
+        <span className={emojiClassName}>{CATEGORY_EMOJI[story.category]}</span>
+        <span className="text-[11px] font-semibold uppercase tracking-[0.18em]">
           {CATEGORY_LABELS[story.category]}
         </span>
       </div>
