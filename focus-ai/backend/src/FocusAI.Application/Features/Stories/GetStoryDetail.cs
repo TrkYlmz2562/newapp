@@ -34,12 +34,18 @@ public sealed class GetStoryDetailQueryHandler(
             .Include(s => s.Articles).ThenInclude(a => a.Source)
             .FirstOrDefaultAsync(s => s.Slug == slug, cancellationToken);
 
-        // Only published stories are servable. A Draft or Enriching story still
-        // carries the raw article headline, no summary and — until enrichment
-        // finishes — a slug that is allowed to change; the feed and search already
-        // filter on Published, so serving one here just meant a direct link showed
-        // a half-built card in the source language.
-        if (story is null || story.Status != StoryStatus.Published)
+        // A story that has never been published is not servable: it still carries the
+        // raw article headline, has no summary, and its slug is allowed to change, so
+        // a direct link showed a half-built card in the source language.
+        //
+        // The test is FirstPublishedAt rather than Status. Clustering demotes a
+        // Published story back to Enriching whenever new coverage arrives, so keying
+        // off Status would make a live story 404 for the length of its re-enrichment
+        // — and permanently if enrichment kept failing. Once published, a story stays
+        // reachable; only Suppressed takes it back off the site.
+        if (story is null ||
+            story.Status == StoryStatus.Suppressed ||
+            story.FirstPublishedAt is null)
         {
             throw NotFoundException.For("Haber", request.Slug);
         }

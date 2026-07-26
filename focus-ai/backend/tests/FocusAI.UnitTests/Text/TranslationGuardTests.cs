@@ -259,6 +259,116 @@ public class TranslationGuardTests
     public void Text_that_is_not_turkish_is_not_mistaken_for_it(string text) =>
         Assert.False(TranslationGuard.LooksTurkish(text));
 
+    [Theory]
+    // A "starts with a capital" rule misses every one of these.
+    [InlineData("iOS")]
+    [InlineData("gRPC")]
+    [InlineData("eBPF")]
+    [InlineData("macOS")]
+    [InlineData("Go")]
+    [InlineData("Qt")]
+    public void Lowercase_initial_and_two_letter_product_names_are_protected(string name)
+    {
+        var source = $"The team rewrote the agent in {name} for the next release.";
+
+        Assert.Equal(
+            TranslationRejection.LostIdentifier,
+            TranslationGuard.Inspect(source, "Ekip, ajanı bir sonraki sürüm için yeniden yazdı.", out _));
+    }
+
+    [Fact]
+    public void An_acronym_dense_mixed_case_title_still_protects_its_acronyms()
+    {
+        // A "mostly uppercase" test calls this shouting and then disables both the
+        // acronym and proper-noun rules — leaving the densest segment unprotected.
+        const string source = "GPU ve TPU Fiyatları SSD ile Birlikte Düştü";
+
+        Assert.Equal(
+            TranslationRejection.LostIdentifier,
+            TranslationGuard.Inspect(source, "Fiyatlar birlikte düştü", out _));
+    }
+
+    [Theory]
+    [InlineData("Istanbul", "İstanbul")]
+    [InlineData("Izmir", "İzmir")]
+    public void Turkish_dotted_capital_i_counts_as_the_same_identifier(string english, string turkish)
+    {
+        // OrdinalIgnoreCase does not fold İ to I, so without explicit folding the
+        // correct Turkish spelling reads as a lost identifier.
+        var source = $"The new data centre opened in {english} last month.";
+
+        Assert.Equal(
+            TranslationRejection.None,
+            TranslationGuard.Inspect(source, $"Yeni veri merkezi geçen ay {turkish}'da açıldı.", out _));
+    }
+
+    [Theory]
+    [InlineData("US", "ABD")]
+    [InlineData("EU", "AB")]
+    public void Acronyms_that_turkish_localises_are_not_required_to_survive(string english, string turkish)
+    {
+        var source = $"The {english} regulator approved the merger this week.";
+
+        Assert.Equal(
+            TranslationRejection.None,
+            TranslationGuard.Inspect(source, $"{turkish} düzenleyicisi birleşmeyi bu hafta onayladı.", out _));
+    }
+
+    [Fact]
+    public void A_decimal_may_be_written_the_turkish_way()
+    {
+        // Turkish writes 1.5 as 1,5. Requiring the exact token would refuse a
+        // correct translation of any sentence carrying a figure.
+        const string source = "The upgrade cut the build time by 1.5 seconds on average.";
+
+        Assert.Equal(
+            TranslationRejection.None,
+            TranslationGuard.Inspect(source, "Güncelleme derleme süresini ortalama 1,5 saniye kısalttı.", out _));
+    }
+
+    [Fact]
+    public void A_version_number_still_has_to_survive_a_separator_change()
+    {
+        const string source = "Kubernetes 1.34 removes the in-tree drivers.";
+
+        Assert.Equal(
+            TranslationRejection.None,
+            TranslationGuard.Inspect(source, "Kubernetes 1,34 ağaç içi sürücüleri kaldırıyor.", out _));
+
+        Assert.Equal(
+            TranslationRejection.LostIdentifier,
+            TranslationGuard.Inspect(source, "Kubernetes ağaç içi sürücüleri kaldırıyor.", out _));
+    }
+
+    [Theory]
+    [InlineData("İşte çeviri:")]
+    [InlineData("işte çeviri: Sürüm notları on iki düzeltme sıralıyor.")]
+    public void The_turkish_preamble_is_actually_matched(string candidate)
+    {
+        // Writing "İşte" as a literal can put "i" + U+0307 into the pattern, which
+        // matches neither spelling — the alternative becomes dead code and the
+        // preamble ships as part of the headline.
+        const string source = "The release notes list twelve fixes.";
+
+        var verdict = TranslationGuard.Inspect(source, candidate, out var accepted);
+
+        Assert.True(
+            verdict == TranslationRejection.Preamble || accepted == "Sürüm notları on iki düzeltme sıralıyor.",
+            $"preamble was neither stripped nor rejected; got {verdict} / '{accepted}'");
+    }
+
+    [Fact]
+    public void English_prose_mentioning_a_turkish_name_is_not_treated_as_turkish()
+    {
+        // Counting the letters rather than their rate marks this as already-Turkish,
+        // and the translator then skips it and publishes the English.
+        const string text =
+            "The regulator, chaired by Kılıçdaroğlu, said the merger would be reviewed " +
+            "again in the autumn once the outstanding filings have been submitted.";
+
+        Assert.False(TranslationGuard.LooksTurkish(text));
+    }
+
     [Fact]
     public void Chunking_splits_on_sentence_boundaries_and_loses_nothing()
     {

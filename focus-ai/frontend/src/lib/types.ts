@@ -320,6 +320,40 @@ export interface Source {
   consecutiveFailures: number;
 }
 
+export type SourceHealthStatus = 'Healthy' | 'Stale' | 'Failing' | 'Disabled' | 'Unknown';
+
+export interface SourceHealth {
+  id: string;
+  name: string;
+  slug: string;
+  websiteUrl: string;
+  category: SourceCategory;
+  isOfficial: boolean;
+  isEnabled: boolean;
+  trustWeight: number;
+  language: string;
+  iconUrl?: string | null;
+  status: SourceHealthStatus;
+  /** Why the verdict is what it is, in words. Always shown — the colour alone is not a claim. */
+  reason: string;
+  lastSucceededAt?: string | null;
+  consecutiveFailures: number;
+  newestArticleAt?: string | null;
+  articleCount30d: number;
+  /** The source's own median gap between articles. Null when unmeasurable. */
+  typicalGapHours?: number | null;
+  isFavorite: boolean;
+}
+
+export interface SourceHealthReport {
+  sources: SourceHealth[];
+  healthyCount: number;
+  staleCount: number;
+  failingCount: number;
+  disabledCount: number;
+  generatedAt: string;
+}
+
 export interface AskResult {
   answer: string;
   confidence: number;

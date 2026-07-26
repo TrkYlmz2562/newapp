@@ -96,6 +96,16 @@ public sealed class GeminiClient(
                 LatencyMs = (int)stopwatch.ElapsedMilliseconds
             };
         }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            // HttpClient surfaces its own timeout as TaskCanceledException, which
+            // derives from OperationCanceledException — so the filter below lets a
+            // timeout escape and abort the whole enrichment batch instead of
+            // degrading that one story to the extractive fallback. The caller's
+            // token is what separates a real cancellation from a slow model.
+            logger.LogWarning("FocusAI Gemini call timed out");
+            return LlmResponse.Failed(Provider, model, "Model zaman aşımına uğradı.");
+        }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "FocusAI Gemini call threw");

@@ -1,4 +1,5 @@
 using FocusAI.Application.Dtos;
+using FocusAI.Application.Features.Catalog;
 using FocusAI.Application.Features.Digests;
 using FocusAI.Application.Features.Ingestion;
 using FocusAI.Application.Features.Trends;
@@ -102,6 +103,23 @@ public static class AdminEndpoints
                 }))
             .WithSummary("Trend anlık görüntülerini yeniden hesaplar.");
 
+        group.MapPut("/sources/{sourceId:guid}/enabled", async (
+                Guid sourceId,
+                SetSourceEnabledRequest request,
+                ISender sender,
+                CancellationToken ct) =>
+                Results.Ok(new
+                {
+                    enabled = await sender.Send(new SetSourceEnabledCommand(sourceId, request.Enabled), ct)
+                }))
+            .WithSummary("Bir kaynağı açar veya kapatır.")
+            .WithDescription(
+                "Kapatılan kaynak taranmaz ve akışa yeni içerik veremez; mevcut " +
+                "haberleri silinmez. Yeniden açmak, zamanlayıcının hata sonrası " +
+                "geri çekilmesini de sıfırlar.");
+
         return app;
     }
+
+    public sealed record SetSourceEnabledRequest(bool Enabled);
 }

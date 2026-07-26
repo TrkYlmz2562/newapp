@@ -106,10 +106,18 @@ services:
       - translator-models:/root/.cache/llama.cpp
     ports:
       - '8081:8080'
-    # Healthcheck bilerek yok: imajda curl olup olmadığı doğrulanmadı ve yanlış
-    # bir healthcheck çalışan konteyneri "unhealthy" gösterir — hiç olmamasından
-    # kötü. Buna depends_on ile bağlı bir şey de yok; çevirmen kapalıyken API
-    # zaten kaynak dilinde yayınlamaya devam ediyor.
+    # Bu blok SİLİNEMEZ. İmajın kendi HEALTHCHECK'i var
+    # (CMD curl -f http://localhost:8080/health) ve start_period tanımlamıyor,
+    # yani Docker varsayılanı geçerli oluyor: 30 sn aralık, 3 deneme. Model ilk
+    # açılışta 2,5 GB indirip yüklerken port daha açılmamış oluyor ve konteyner
+    # daha ilk dakikada "unhealthy" damgası yiyor. Buradaki tek iş, aynı komutu
+    # uzun bir start_period ile geçersiz kılmak.
+    healthcheck:
+      test: ['CMD', 'curl', '-fsS', 'http://localhost:8080/health']
+      start_period: 900s
+      interval: 30s
+      timeout: 10s
+      retries: 5
     restart: unless-stopped
 
   api:

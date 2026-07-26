@@ -94,10 +94,21 @@ public sealed class TranslationOptions
 
     /// <summary>
     /// Ceiling on requests per story, across all its fields. A story that needs
-    /// more than this has its remaining fields left in the source language rather
-    /// than stalling the batch behind one pathological article.
+    /// more than this has its remaining fields left in the source language.
     /// </summary>
     public int MaxRequestsPerStory { get; set; } = 24;
+
+    /// <summary>
+    /// Wall-clock ceiling per story, which is the bound that actually matters.
+    /// </summary>
+    /// <remarks>
+    /// A request count alone does not stop one article stalling the batch: 24
+    /// requests at the per-request timeout is over an hour, and enrichment runs
+    /// stories sequentially inside a job the scheduler starts every 20 minutes.
+    /// Two minutes per story keeps a 25-story batch inside its window even when
+    /// every call is slow.
+    /// </remarks>
+    public int MaxSecondsPerStory { get; set; } = 120;
 }
 
 public sealed class EmbeddingOptions

@@ -77,6 +77,8 @@ public sealed class LocalTranslator(
         // write into a story field.
         var results = segments.ToArray();
         var budget = Math.Max(1, _options.MaxRequestsPerStory);
+        var deadline = System.Diagnostics.Stopwatch.StartNew();
+        var deadlineSeconds = Math.Max(10, _options.MaxSecondsPerStory);
         var refused = 0;
         var translated = 0;
 
@@ -95,14 +97,19 @@ public sealed class LocalTranslator(
 
             var chunks = TranslationGuard.Chunk(source, Math.Max(120, _options.MaxSegmentChars));
 
-            if (budget < chunks.Count)
+            // Time is the bound that matters: enrichment walks stories one at a
+            // time inside a job the scheduler restarts every 20 minutes, so a story
+            // that keeps the translator for an hour delays every story behind it.
+            var outOfTime = deadline.Elapsed.TotalSeconds >= deadlineSeconds;
+
+            if (outOfTime || budget < chunks.Count)
             {
-                // Out of budget: the remaining fields stay in the source language.
                 // Logged rather than swallowed — a story that routinely exhausts
-                // this is a story whose fields are too long, and that is worth
-                // seeing.
+                // this is a story whose fields are too long, or a backend that is
+                // too slow to be useful, and both are worth seeing.
                 logger.LogInformation(
-                    "FocusAI translation budget exhausted; {Remaining} field(s) left untranslated",
+                    "FocusAI translation stopped ({Reason}); {Remaining} field(s) left untranslated",
+                    outOfTime ? $"{deadlineSeconds}s time budget" : "request budget",
                     segments.Count - i);
                 break;
             }
@@ -171,9 +178,11 @@ public sealed class LocalTranslator(
             // Translation is not a creative task, and sampling is where the
             // hallucinated product names come from.
             ["temperature"] = 0d,
-            // Turkish runs longer than English; four tokens per source character
-            // of headroom keeps a legitimate translation from being cut off, which
-            // the guard would then reject as a length failure.
+            // One token per source character. Text runs roughly four characters to
+            // the token, so this is about four times what the translation needs —
+            // deliberate headroom, because Turkish is longer than English and a
+            // completion cut off mid-sentence comes back to the guard as a length
+            // failure and gets thrown away.
             ["max_tokens"] = Math.Clamp(text.Length, 128, 2048),
             ["stream"] = false
         };
@@ -198,6 +207,18 @@ public sealed class LocalTranslator(
                 JsonOptions, cancellationToken);
 
             return parsed?.Choices?.FirstOrDefault()?.Message?.Content;
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            // HttpClient reports its own timeout as TaskCanceledException, which
+            // derives from OperationCanceledException — so the usual
+            // "when (ex is not OperationCanceledException)" filter lets a timeout
+            // through and aborts the entire enrichment batch. The caller's token is
+            // the only reliable way to tell a real cancellation from a slow model,
+            // and a slow model is the expected case here: CPU inference on a 4B
+            // model takes tens of seconds per request.
+            logger.LogWarning("FocusAI translation timed out after {Seconds}s", _options.TimeoutSeconds);
+            return null;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

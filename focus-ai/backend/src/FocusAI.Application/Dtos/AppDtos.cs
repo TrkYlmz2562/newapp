@@ -1,4 +1,5 @@
 using FocusAI.Domain.Enums;
+using FocusAI.Domain.Scoring;
 
 namespace FocusAI.Application.Dtos;
 
@@ -113,6 +114,40 @@ public sealed record SourceDto(
     string? IconUrl,
     DateTimeOffset? LastSucceededAt,
     int ConsecutiveFailures);
+
+/// <summary>
+/// One source with a verdict on whether it is actually working. Everything needed
+/// to justify the verdict travels with it — the reader should be able to check the
+/// claim rather than take a status colour on trust.
+/// </summary>
+public sealed record SourceHealthDto(
+    Guid Id,
+    string Name,
+    string Slug,
+    string WebsiteUrl,
+    SourceCategory Category,
+    bool IsOfficial,
+    bool IsEnabled,
+    double TrustWeight,
+    string Language,
+    string? IconUrl,
+    SourceHealthStatus Status,
+    string Reason,
+    DateTimeOffset? LastSucceededAt,
+    int ConsecutiveFailures,
+    DateTimeOffset? NewestArticleAt,
+    int ArticleCount30d,
+    /// <summary>The source's own median gap between articles. Null when unmeasurable.</summary>
+    double? TypicalGapHours,
+    bool IsFavorite);
+
+public sealed record SourceHealthReportDto(
+    IReadOnlyList<SourceHealthDto> Sources,
+    int HealthyCount,
+    int StaleCount,
+    int FailingCount,
+    int DisabledCount,
+    DateTimeOffset GeneratedAt);
 
 public sealed record AskResultDto(
     string Answer,

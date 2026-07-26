@@ -21,6 +21,19 @@ public class Story : AuditableEntity
 
     public StoryStatus Status { get; set; } = StoryStatus.Draft;
 
+    /// <summary>
+    /// When this story first became visible to readers, or null if it never has.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="Status"/> cannot answer "has anyone been able to link to this
+    /// yet": clustering demotes a Published story back to Enriching every time new
+    /// coverage arrives, so a story that has been live for days reads as unpublished
+    /// for the duration of its re-enrichment. Anything that must not change after
+    /// first publication — the permalink above all — has to key off this instead.
+    /// Set once and never cleared.
+    /// </remarks>
+    public DateTimeOffset? FirstPublishedAt { get; set; }
+
     /// <summary>Earliest publish time across the cluster — when the news actually broke.</summary>
     public DateTimeOffset PublishedAt { get; set; }
 

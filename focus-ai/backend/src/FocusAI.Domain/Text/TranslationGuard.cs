@@ -58,23 +58,38 @@ public static class TranslationGuard
         @"\b[A-Za-z0-9]+(?:[.\-/_][A-Za-z0-9]+)+\b",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
+    /// <summary>
+    /// A plain two-part decimal — "1.5", "2.5". Excluded from the protected set
+    /// because Turkish writes it "1,5", so requiring the exact token to survive
+    /// would refuse a correct translation of any sentence containing a figure. The
+    /// digits themselves are still checked by <see cref="DigitRun"/>.
+    /// </summary>
+    private static readonly Regex BareDecimal = new(
+        @"^[0-9]+[.,][0-9]+$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
     /// <summary>Acronyms and product codes: GPU, API, SSH, TB, CVE, M5.</summary>
     private static readonly Regex AcronymLike = new(
         @"\b[A-Z][A-Z0-9]{1,11}\b",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     /// <summary>
-    /// Internal capitals: OpenSSH, JavaScript, PostgreSQL, GitHub, macOS. At least
-    /// one lowercase letter is required before the inner capital, otherwise every
-    /// ALL-CAPS word matches this too.
+    /// Any token mixing upper and lower case: OpenSSH, JavaScript, PostgreSQL,
+    /// GitHub, macOS, iOS, gRPC, eBPF. Case-mixing inside a word is not something
+    /// ordinary prose does, so it is a strong signal on its own — and it catches
+    /// the lowercase-initial names that a "starts with a capital" rule misses.
     /// </summary>
-    private static readonly Regex InnerCapital = new(
-        @"\b[A-Za-z][a-z0-9]+[A-Z][A-Za-z0-9]*\b",
+    private static readonly Regex MixedCase = new(
+        @"\b[A-Za-z][A-Za-z0-9]*\b",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
-    /// <summary>Capitalised words: candidate proper nouns. Filtered by <see cref="SentenceOpeners"/>.</summary>
+    /// <summary>
+    /// Capitalised words: candidate proper nouns, filtered by
+    /// <see cref="NotProperNouns"/>. Two letters is the floor, so "Go" and "Qt" —
+    /// real product names that a three-letter minimum silently dropped — are covered.
+    /// </summary>
     private static readonly Regex Capitalised = new(
-        @"\b[A-Z][a-z]{2,}\b",
+        @"\b[A-Z][a-z]+\b",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     /// <summary>Multi-digit runs. Single digits are excluded: too common to be a signal.</summary>
@@ -86,8 +101,16 @@ public static class TranslationGuard
     /// A model asked for a translation sometimes answers about the translation
     /// instead. Anchored to the start so a legitimate mid-sentence "çeviri" survives.
     /// </summary>
+    /// <remarks>
+    /// The Turkish "işte" alternative is spelled as a character class rather than a
+    /// literal on purpose. Writing "İşte" in source puts either U+0130 or a plain
+    /// "i" followed by U+0307 (combining dot above) into the pattern depending on how
+    /// the file was normalised — and the second form matches neither spelling of the
+    /// word, so the alternative silently becomes dead code and the preamble ships as
+    /// part of the headline.
+    /// </remarks>
     private static readonly Regex PreambleLine = new(
-        @"^\s*(?:here(?:'s| is)\b[^\n:]*:|sure[,!]?\s+|okay[,!]?\s+|of course[,!]?\s+|translation\b[^\n:]*:|translated\b[^\n:]*:|çeviri\b[^\n:]*:|i̇şte\b[^\n:]*:|iste\b[^\n:]*:|tabii[,!]?\s+|elbette[,!]?\s+)",
+        @"^\s*(?:here(?:'s| is)\b[^\n:]*:|sure[,!]?\s+|okay[,!]?\s+|of course[,!]?\s+|translation\b[^\n:]*:|translated\b[^\n:]*:|[cç]eviri\b[^\n:]*:|[iIİı]̇?[sş]te\b[^\n:]*:|tabii[,!]?\s+|elbette[,!]?\s+)",
         RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     /// <summary>
@@ -125,6 +148,16 @@ public static class TranslationGuard
         "english", "turkish", "chinese", "japanese", "korean", "german", "french",
         "spanish", "russian", "indian", "american", "european", "british", "dutch",
         "italian", "brazilian", "canadian", "australian",
+        // Acronyms Turkish always localises: US/USA → ABD, EU → AB, UK → BK,
+        // UN → BM, WHO → DSÖ, GDP → GSYH. Requiring these to survive verbatim
+        // would refuse a correct translation of any story that mentions a country
+        // or an institution, which is most finance coverage.
+        "us", "usa", "eu", "uk", "un", "who", "gdp", "cpi", "imf", "ecb", "fed",
+        // Two-letter English words the lowered capitalisation floor now reaches.
+        // Without these, "In", "On", "At", "It", "As", "By", "Of", "To", "Is",
+        // "We", "He", "An", "Or", "If", "No", "So", "Up" become protected names.
+        "in", "on", "at", "it", "as", "by", "of", "to", "is", "we", "he", "an",
+        "or", "if", "no", "so", "up", "do", "be", "am", "my", "me", "you", "was",
         "the", "and", "but", "for", "nor", "yet", "not", "all", "any", "both", "each",
         "this", "that", "these", "those", "there", "here", "they", "them", "their",
         "she", "her", "his", "him", "its", "our", "your", "you", "who", "whom", "whose",
@@ -211,11 +244,13 @@ public static class TranslationGuard
             }
         }
 
+        var folded = FoldForMatching(text);
+
         foreach (var identifier in Identifiers(source))
         {
             // Containment, not token equality: Turkish suffixes attach directly
             // ("OpenSSH'in", "10.2'de"), so the identifier survives as a substring.
-            if (!text.Contains(identifier, StringComparison.OrdinalIgnoreCase))
+            if (!folded.Contains(FoldForMatching(identifier), StringComparison.Ordinal))
             {
                 return TranslationRejection.LostIdentifier;
             }
@@ -252,28 +287,91 @@ public static class TranslationGuard
 
         // Digit required: otherwise ordinary hyphenated English ("in-tree",
         // "open-source") would have to survive translation verbatim.
-        Collect(CodeToken, m => m.Value.Any(char.IsDigit));
+        Collect(CodeToken, m => m.Value.Any(char.IsDigit) && !BareDecimal.IsMatch(m.Value));
 
         // An all-caps headline would make every word an "acronym" and reject every
         // translation of it. Same trap VisualSubject hits when scoring headlines.
-        var allCaps = IsAllCaps(source);
-        if (!allCaps)
+        if (!IsAllCaps(source))
         {
-            Collect(AcronymLike);
-            Collect(Capitalised, IsProperNoun);
+            Collect(AcronymLike, m => IsProperNoun(m.Value));
+            Collect(Capitalised, m => IsProperNoun(m.Value));
         }
 
-        Collect(InnerCapital);
+        // Case-mixing is checked even in an all-caps segment: "OpenSSH" cannot occur
+        // inside genuinely all-caps text, so a match here is real either way.
+        Collect(MixedCase, m => HasMixedCase(m.Value));
         Collect(DigitRun);
 
         return found;
     }
 
     /// <summary>
-    /// Whether a capitalised word is a name rather than an ordinary word that
-    /// happens to open a sentence.
+    /// Case folding for the containment check, with the four Turkish i-forms folded
+    /// together.
     /// </summary>
-    private static bool IsProperNoun(Match match) => !NotProperNouns.Contains(match.Value);
+    /// <remarks>
+    /// <c>OrdinalIgnoreCase</c> does not fold Turkish İ to I, so the correct Turkish
+    /// rendering of a name written with an ASCII I — Istanbul → İstanbul, Izmir →
+    /// İzmir — reads as a lost identifier and the whole translation is refused. That
+    /// is the same trap this codebase hit in VisualSubject; the fix is the same,
+    /// explicit folding rather than a culture-sensitive comparison.
+    /// </remarks>
+    private static string FoldForMatching(string value)
+    {
+        var builder = new System.Text.StringBuilder(value.Length);
+
+        foreach (var rune in value)
+        {
+            builder.Append(rune switch
+            {
+                'I' or 'İ' or 'ı' or 'i' => 'i',
+                _ => char.ToLowerInvariant(rune)
+            });
+        }
+
+        return builder.ToString();
+    }
+
+    /// <summary>
+    /// Whether a capitalised word or acronym is a name rather than something Turkish
+    /// translates.
+    /// </summary>
+    private static bool IsProperNoun(string token) => !NotProperNouns.Contains(token);
+
+    /// <summary>
+    /// True for tokens that mix cases somewhere other than the first letter —
+    /// "OpenSSH", "iOS", "gRPC". "React" and "REACT" are both excluded: those are
+    /// ordinary capitalisation patterns handled by the other rules.
+    /// </summary>
+    private static bool HasMixedCase(string token)
+    {
+        if (token.Length < 2)
+        {
+            return false;
+        }
+
+        var hasUpper = false;
+        var hasLower = false;
+        var upperAfterFirst = false;
+
+        for (var i = 0; i < token.Length; i++)
+        {
+            if (char.IsUpper(token[i]))
+            {
+                hasUpper = true;
+                if (i > 0)
+                {
+                    upperAfterFirst = true;
+                }
+            }
+            else if (char.IsLower(token[i]))
+            {
+                hasLower = true;
+            }
+        }
+
+        return hasUpper && hasLower && upperAfterFirst;
+    }
 
     /// <summary>
     /// Guards against the model answering in the wrong language entirely — the
@@ -305,24 +403,36 @@ public static class TranslationGuard
         return letters == 0 || foreign / (double)letters <= MaxForeignScriptShare;
     }
 
+    /// <summary>
+    /// A genuinely shouted headline, where treating every word as an acronym would
+    /// refuse every possible translation.
+    /// </summary>
+    /// <remarks>
+    /// The test is "no lowercase at all", not "mostly uppercase". A ratio threshold
+    /// misfires on ordinary acronym-dense tech titles — "GPU ve TPU Fiyatları SSD
+    /// ile" is mixed-case prose, but a lenient ratio calls it shouting and then
+    /// disables both the acronym and proper-noun rules, leaving the segment with no
+    /// protected identifiers at all. That failure is silent and points the wrong way:
+    /// it makes the guard permissive exactly where the names are densest.
+    /// </remarks>
     private static bool IsAllCaps(string text)
     {
         var upper = 0;
-        var lower = 0;
 
         foreach (var rune in text)
         {
+            if (char.IsLower(rune))
+            {
+                return false;
+            }
+
             if (char.IsUpper(rune))
             {
                 upper++;
             }
-            else if (char.IsLower(rune))
-            {
-                lower++;
-            }
         }
 
-        return upper > 0 && lower * 4 < upper;
+        return upper >= 3;
     }
 
     /// <summary>
@@ -509,8 +619,12 @@ public static class TranslationGuard
             return false;
         }
 
+        // A rate, not a count. English prose that merely mentions a Turkish name
+        // ("Kılıçdaroğlu said…") carries two or three of these letters in a long
+        // paragraph; genuinely Turkish text carries them throughout. Counting alone
+        // would mark that paragraph as already-Turkish and skip translating it.
         var distinctive = text.Count(c => Array.IndexOf(TurkishLetters, c) >= 0);
-        if (distinctive >= 2 && text.Length >= 30)
+        if (distinctive >= 3 && distinctive * 40 >= text.Length && text.Length >= 30)
         {
             return true;
         }

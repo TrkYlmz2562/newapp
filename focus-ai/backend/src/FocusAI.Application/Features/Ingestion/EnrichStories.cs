@@ -76,10 +76,11 @@ public sealed class EnrichStoriesCommandHandler(
 
             try
             {
-                // Captured before the status is overwritten: it is the only signal
-                // for "has anyone been able to link to this story yet", which is
-                // what decides whether the permalink may still change.
-                var wasPublished = story.Status == StoryStatus.Published;
+                // Status cannot answer "has anyone been able to link to this yet":
+                // ClusterArticles demotes a Published story back to Enriching on every
+                // new piece of coverage, so a story that has been live for days looks
+                // unpublished here. FirstPublishedAt is the durable answer.
+                var wasPublished = story.FirstPublishedAt is not null;
 
                 story.Status = StoryStatus.Enriching;
 
@@ -97,6 +98,9 @@ public sealed class EnrichStoriesCommandHandler(
                 await ApplyComparisonAsync(story, now, cancellationToken);
 
                 story.Status = StoryStatus.Published;
+                // Stamped once. From here the permalink is frozen and the detail page
+                // keeps serving the story even while a later re-enrichment is running.
+                story.FirstPublishedAt ??= now;
                 story.UpdatedAt = now;
                 published++;
             }
@@ -194,16 +198,29 @@ public sealed class EnrichStoriesCommandHandler(
 
         var fields = summary.UntranslatedFields.ToHashSet(StringComparer.Ordinal);
 
+        // Everything below turns on one question: is this the story's first
+        // enrichment? Before it, the story's own title and dek are still raw source
+        // text. After it, they are this pipeline's settled output — re-translating
+        // them would feed Turkish back through the translator, and a title rewritten
+        // a little on every re-enrichment drifts away from what it started as.
+        var firstEnrichment = story.Summary is null;
+
         // The dek is the one field the LLM path backfills from the story itself
-        // rather than from the result, so the producer cannot declare it. Only on
-        // a first enrichment, where the existing dek is still the clustering
-        // excerpt — on a re-run it is last run's output and already Turkish.
-        if (string.IsNullOrWhiteSpace(summary.Dek) &&
-            !string.IsNullOrWhiteSpace(story.Dek) &&
-            story.Summary is null)
+        // rather than from the result, so the producer cannot declare it.
+        if (firstEnrichment &&
+            string.IsNullOrWhiteSpace(summary.Dek) &&
+            !string.IsNullOrWhiteSpace(story.Dek))
         {
             summary = summary with { Dek = story.Dek };
             fields.Add(SummaryField.Dek);
+        }
+
+        // Same reasoning for the title. The producer declares it untranslated when
+        // the model omitted one — but on a re-run the value it fell back to is
+        // story.Title, which the first run already settled.
+        if (!firstEnrichment)
+        {
+            fields.Remove(SummaryField.Title);
         }
 
         if (fields.Count == 0)

@@ -65,11 +65,14 @@ public sealed class ContentAiService(
         // return one. When it omits the key the story would otherwise be published
         // under the source headline, so the borrowed field is declared rather than
         // silently passed off as model output.
+        // Whitespace counts as omitted: a model that answers "title": " " would
+        // otherwise publish the source headline while declaring the result Turkish.
         var modelTitle = JsonExtractor.GetString(root, "title");
+        var hasModelTitle = !string.IsNullOrWhiteSpace(modelTitle);
 
         return new StorySummaryResult
         {
-            Title = modelTitle ?? context.Title,
+            Title = hasModelTitle ? modelTitle! : context.Title,
             Dek = JsonExtractor.GetString(root, "dek"),
             Summary = summary,
             WhyItMatters = JsonExtractor.GetString(root, "whyItMatters"),
@@ -82,7 +85,7 @@ public sealed class ContentAiService(
             TechnicalAccuracy = Math.Clamp(JsonExtractor.GetDouble(root, "technicalAccuracy", 0.6), 0d, 1d),
             ReadingMinutes = Math.Clamp(JsonExtractor.GetInt(root, "readingMinutes", 2), 1, 15),
             VisualEntity = JsonExtractor.GetString(root, "visualEntity"),
-            UntranslatedFields = modelTitle is null ? [SummaryField.Title] : [],
+            UntranslatedFields = hasModelTitle ? [] : [SummaryField.Title],
             Provider = client.Provider.ToString(),
             Model = response.Model,
             PromptTokens = response.PromptTokens,

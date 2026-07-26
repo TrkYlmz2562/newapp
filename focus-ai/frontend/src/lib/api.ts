@@ -9,6 +9,7 @@ import type {
   Paged,
   Profile,
   Source,
+  SourceHealthReport,
   StoryCard,
   StoryDetail,
   Topic,
@@ -315,4 +316,18 @@ export const api = {
   topics: (all = false) => request<Topic[]>(`/api/topics${qs({ all })}`),
 
   sources: (category?: string) => request<Source[]>(`/api/sources${qs({ category })}`),
+
+  /**
+   * Whether each source is actually working. The endpoint is anonymous-safe, but
+   * the token is still sent when there is one — that is what fills in isFavorite.
+   */
+  sourceHealth: () => request<SourceHealthReport>('/api/sources/health'),
+
+  admin: {
+    setSourceEnabled: (sourceId: string, enabled: boolean) =>
+      request<{ enabled: boolean }>(`/api/admin/sources/${sourceId}/enabled`, {
+        method: 'PUT',
+        body: { enabled },
+      }),
+  },
 };

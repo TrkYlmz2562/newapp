@@ -126,6 +126,18 @@ public static class StoryEndpoints
             .Produces<IReadOnlyList<SourceDto>>()
             .AllowAnonymous();
 
+        app.MapGet("/api/sources/health", async (ISender sender, CancellationToken ct) =>
+                Results.Ok(await sender.Send(new GetSourceHealthQuery(), ct)))
+            .WithTags("Catalog")
+            .WithSummary("Kaynakların gerçekten çalışıp çalışmadığı.")
+            .WithDescription(
+                "Bir akış HTTP 200 dönüp aylardır güncellenmemiş içerik servis edebilir; " +
+                "tarama başarılı görünür ve kaynak yeşil kalır. Bu uç, sessizliği " +
+                "kaynağın kendi yayın ritmine göre değerlendirir — haftada bir yazan " +
+                "bir blog 10 günde bayat değildir, saatte bir yazan bir ajans öyledir.")
+            .Produces<SourceHealthReportDto>()
+            .AllowAnonymous();
+
         app.MapGet("/api/finance", async (
                 [FromQuery] bool? conditional,
                 [FromQuery] int? take,

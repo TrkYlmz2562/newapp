@@ -88,6 +88,14 @@ public sealed class AnthropicClient(
                 LatencyMs = (int)stopwatch.ElapsedMilliseconds
             };
         }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            // See GeminiClient: an HttpClient timeout arrives as a
+            // TaskCanceledException and would otherwise escape this filter and
+            // abort the whole enrichment batch.
+            logger.LogWarning("FocusAI Anthropic call timed out");
+            return LlmResponse.Failed(Provider, model, "Model zaman aşımına uğradı.");
+        }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "FocusAI Anthropic call threw");

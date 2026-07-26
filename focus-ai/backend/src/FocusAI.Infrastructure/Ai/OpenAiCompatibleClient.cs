@@ -97,6 +97,15 @@ public sealed class OpenAiCompatibleClient(
                 LatencyMs = (int)stopwatch.ElapsedMilliseconds
             };
         }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            // See GeminiClient: an HttpClient timeout arrives as a
+            // TaskCanceledException and would otherwise escape this filter and
+            // abort the whole enrichment batch. Self-hosted backends make this the
+            // common case rather than the rare one.
+            logger.LogWarning("FocusAI LLM call to {Provider} timed out", provider);
+            return LlmResponse.Failed(provider, model, "Model zaman aşımına uğradı.");
+        }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "FocusAI LLM call to {Provider} threw", provider);

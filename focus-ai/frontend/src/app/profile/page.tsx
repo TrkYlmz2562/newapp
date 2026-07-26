@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
@@ -146,6 +147,17 @@ export default function ProfilePage() {
             Varsayılan olarak telefonunun ayarını izler.
           </p>
           <ThemeToggle />
+        </section>
+
+        <section className="card p-5">
+          <h2 className="mb-1 text-sm font-semibold text-ink-800 dark:text-ink-100">Kaynaklar</h2>
+          <p className="mb-3 text-xs leading-relaxed text-ink-500 dark:text-ink-400">
+            Hangi kaynakların gerçekten çalıştığını gör, takip etmek istediklerini seç.
+            Bir akış hata vermeden aylardır içerik üretmiyor olabilir.
+          </p>
+          <Link href="/kaynaklar" className="btn-ghost">
+            Kaynakları incele
+          </Link>
         </section>
 
         {/* PRD section 15: kept deliberately plain — progress, not pressure. */}
