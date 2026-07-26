@@ -1,5 +1,6 @@
 using FocusAI.Application.Common.Interfaces;
 using FocusAI.Application.Dtos;
+using FocusAI.Domain.Common;
 using FocusAI.Domain.Entities.Content;
 using FocusAI.Domain.Enums;
 using FocusAI.Domain.Scoring;
@@ -160,13 +161,18 @@ public sealed class EnrichStoriesCommandHandler(
             db.StorySummaries.Add(story.Summary);
         }
 
-        story.Summary.Summary = result.Summary;
-        story.Summary.WhyItMatters = result.WhyItMatters;
-        story.Summary.WhoIsAffected = result.WhoIsAffected;
-        story.Summary.WhatShouldIDo = result.WhatShouldIDo;
-        story.Summary.KeyPoints = result.KeyPoints.ToList();
-        story.Summary.Provider = result.Provider;
-        story.Summary.Model = result.Model;
+        // Every field below is model output and is capped at its column width.
+        story.Summary.Summary = FieldLimits.Cap(result.Summary, FieldLimits.Summary)!;
+        story.Summary.WhyItMatters = FieldLimits.Cap(result.WhyItMatters, FieldLimits.SummarySection);
+        story.Summary.WhoIsAffected = FieldLimits.Cap(result.WhoIsAffected, FieldLimits.SummarySection);
+        story.Summary.WhatShouldIDo = FieldLimits.Cap(result.WhatShouldIDo, FieldLimits.SummarySection);
+        story.Summary.KeyPoints = result.KeyPoints
+            .Take(FieldLimits.KeyPointCount)
+            .Select(point => FieldLimits.Cap(point, FieldLimits.KeyPoint)!)
+            .Where(point => !string.IsNullOrWhiteSpace(point))
+            .ToList();
+        story.Summary.Provider = FieldLimits.Cap(result.Provider, FieldLimits.ProviderName);
+        story.Summary.Model = FieldLimits.Cap(result.Model, FieldLimits.ModelName);
         story.Summary.PromptTokens = result.PromptTokens;
         story.Summary.CompletionTokens = result.CompletionTokens;
         story.Summary.GeneratedAt = now;
@@ -174,7 +180,7 @@ public sealed class EnrichStoriesCommandHandler(
 
         if (!string.IsNullOrWhiteSpace(result.Title))
         {
-            story.Title = result.Title;
+            story.Title = FieldLimits.Cap(result.Title, FieldLimits.StoryTitle)!;
 
             // The slug is a permalink: only mint one while the story is still a
             // draft, so links shared from a published card never break.
@@ -184,7 +190,7 @@ public sealed class EnrichStoriesCommandHandler(
             }
         }
 
-        story.Dek = result.Dek ?? story.Dek;
+        story.Dek = FieldLimits.Cap(result.Dek, FieldLimits.StoryDek) ?? story.Dek;
         story.ReadingMinutes = Math.Max(1, result.ReadingMinutes);
 
         if (result.Category != ContentCategory.Unknown)
@@ -207,17 +213,20 @@ public sealed class EnrichStoriesCommandHandler(
             db.StoryAnalyses.Add(story.Analysis);
         }
 
-        story.Analysis.WhyImportant = result.WhyImportant;
-        story.Analysis.RealImpact = result.RealImpact;
+        story.Analysis.WhyImportant = FieldLimits.Cap(result.WhyImportant, FieldLimits.AnalysisSection)!;
+        story.Analysis.RealImpact = FieldLimits.Cap(result.RealImpact, FieldLimits.AnalysisSection);
         story.Analysis.Hype = result.Hype;
-        story.Analysis.HypeReasoning = result.HypeReasoning;
+        story.Analysis.HypeReasoning = FieldLimits.Cap(result.HypeReasoning, FieldLimits.AnalysisSection);
         story.Analysis.LearnUrgency = result.LearnUrgency;
         story.Analysis.Longevity = result.Longevity;
-        story.Analysis.LongevityReasoning = result.LongevityReasoning;
-        story.Analysis.StackNotes = new Dictionary<string, string>(result.StackNotes);
+        story.Analysis.LongevityReasoning =
+            FieldLimits.Cap(result.LongevityReasoning, FieldLimits.AnalysisSection);
+        story.Analysis.StackNotes = result.StackNotes.ToDictionary(
+            note => note.Key,
+            note => FieldLimits.Cap(note.Value, FieldLimits.StackNote)!);
         story.Analysis.Confidence = result.Confidence;
-        story.Analysis.Provider = result.Provider;
-        story.Analysis.Model = result.Model;
+        story.Analysis.Provider = FieldLimits.Cap(result.Provider, FieldLimits.ProviderName);
+        story.Analysis.Model = FieldLimits.Cap(result.Model, FieldLimits.ModelName);
         story.Analysis.GeneratedAt = now;
         story.Analysis.UpdatedAt = now;
     }

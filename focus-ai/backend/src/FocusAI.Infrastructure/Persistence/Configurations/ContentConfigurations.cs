@@ -1,4 +1,5 @@
 using System.Text.Json;
+using FocusAI.Domain.Common;
 using FocusAI.Domain.Entities.Content;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
@@ -78,8 +79,8 @@ public class StoryConfiguration : IEntityTypeConfiguration<Story>
         builder.HasIndex(x => x.Category);
 
         builder.Property(x => x.Slug).HasMaxLength(120).IsRequired();
-        builder.Property(x => x.Title).HasMaxLength(500).IsRequired();
-        builder.Property(x => x.Dek).HasMaxLength(600);
+        builder.Property(x => x.Title).HasMaxLength(FieldLimits.StoryTitle).IsRequired();
+        builder.Property(x => x.Dek).HasMaxLength(FieldLimits.StoryDek);
         builder.Property(x => x.HeroImageUrl).HasMaxLength(2000);
 
         builder.Property(x => x.Embedding)
@@ -127,13 +128,13 @@ public class StorySummaryConfiguration : IEntityTypeConfiguration<StorySummary>
         builder.HasIndex(x => new { x.StoryId, x.Language }).IsUnique();
 
         builder.Property(x => x.Language).HasMaxLength(10);
-        builder.Property(x => x.Summary).HasMaxLength(4000).IsRequired();
-        builder.Property(x => x.WhyItMatters).HasMaxLength(2000);
-        builder.Property(x => x.WhoIsAffected).HasMaxLength(2000);
-        builder.Property(x => x.WhatShouldIDo).HasMaxLength(2000);
-        builder.Property(x => x.ExtendedSummary).HasMaxLength(12000);
-        builder.Property(x => x.Provider).HasMaxLength(50);
-        builder.Property(x => x.Model).HasMaxLength(100);
+        builder.Property(x => x.Summary).HasMaxLength(FieldLimits.Summary).IsRequired();
+        builder.Property(x => x.WhyItMatters).HasMaxLength(FieldLimits.SummarySection);
+        builder.Property(x => x.WhoIsAffected).HasMaxLength(FieldLimits.SummarySection);
+        builder.Property(x => x.WhatShouldIDo).HasMaxLength(FieldLimits.SummarySection);
+        builder.Property(x => x.ExtendedSummary).HasMaxLength(FieldLimits.ExtendedSummary);
+        builder.Property(x => x.Provider).HasMaxLength(FieldLimits.ProviderName);
+        builder.Property(x => x.Model).HasMaxLength(FieldLimits.ModelName);
 
         // Npgsql maps List<string> onto text[] natively — no JSON round-trip needed.
         builder.Property(x => x.KeyPoints).HasColumnType("text[]");
@@ -149,12 +150,12 @@ public class StoryAnalysisConfiguration : IEntityTypeConfiguration<StoryAnalysis
         builder.HasIndex(x => new { x.StoryId, x.Language }).IsUnique();
 
         builder.Property(x => x.Language).HasMaxLength(10);
-        builder.Property(x => x.WhyImportant).HasMaxLength(2000).IsRequired();
-        builder.Property(x => x.RealImpact).HasMaxLength(2000);
-        builder.Property(x => x.HypeReasoning).HasMaxLength(2000);
-        builder.Property(x => x.LongevityReasoning).HasMaxLength(2000);
-        builder.Property(x => x.Provider).HasMaxLength(50);
-        builder.Property(x => x.Model).HasMaxLength(100);
+        builder.Property(x => x.WhyImportant).HasMaxLength(FieldLimits.AnalysisSection).IsRequired();
+        builder.Property(x => x.RealImpact).HasMaxLength(FieldLimits.AnalysisSection);
+        builder.Property(x => x.HypeReasoning).HasMaxLength(FieldLimits.AnalysisSection);
+        builder.Property(x => x.LongevityReasoning).HasMaxLength(FieldLimits.AnalysisSection);
+        builder.Property(x => x.Provider).HasMaxLength(FieldLimits.ProviderName);
+        builder.Property(x => x.Model).HasMaxLength(FieldLimits.ModelName);
 
         // Stack notes are an open-ended slug → advice map; jsonb keeps it queryable
         // without a table whose shape changes every time a new stack is covered.
