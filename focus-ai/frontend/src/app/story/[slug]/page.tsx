@@ -140,9 +140,24 @@ export default function StoryPage() {
               type="button"
               onClick={toggleSave}
               aria-pressed={saved}
-              className={`btn-ghost px-3 py-1.5 text-xs ${saved ? 'text-focus-600 dark:text-focus-400' : ''}`}
+              aria-label={saved ? 'Kayıtlardan çıkar' : 'Kaydet'}
+              title={saved ? 'Kayıtlardan çıkar' : 'Kaydet'}
+              className={`rounded-lg p-2 transition hover:bg-ink-100 dark:hover:bg-ink-800 ${
+                saved ? 'text-focus-600 dark:text-focus-400' : 'text-ink-500 dark:text-ink-400'
+              }`}
             >
-              {saved ? '★ Kaydedildi' : '☆ Kaydet'}
+              <svg
+                className="h-5 w-5"
+                viewBox="0 0 24 24"
+                fill={saved ? 'currentColor' : 'none'}
+                stroke="currentColor"
+                strokeWidth={1.8}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M6 4h12v17l-6-4-6 4z" />
+              </svg>
             </button>
           )}
         </div>

@@ -13,6 +13,10 @@ type State = 'idle' | 'working' | 'saved' | 'error';
  * know about WhatsApp, or any other destination — the reader picks. Where the
  * Web Share API cannot take files (desktop browsers, older iOS), the image is
  * downloaded instead, which still gets it into a chat with one more step.
+ *
+ * Icon only, so the state has to be carried by the icon itself. The label stays
+ * in aria-label and title: dropping the visible text is a design choice, dropping
+ * the accessible name would make the control invisible to a screen reader.
  */
 export function ShareButton({ story }: { story: StoryDetail }) {
   const [state, setState] = useState<State>('idle');
@@ -39,7 +43,7 @@ export function ShareButton({ story }: { story: StoryDetail }) {
       anchor.click();
       URL.revokeObjectURL(url);
       setState('saved');
-      setTimeout(() => setState('idle'), 2500);
+      setTimeout(() => setState('idle'), 2000);
     } catch (error) {
       // Dismissing the share sheet rejects with AbortError; that is not a failure.
       if (error instanceof DOMException && error.name === 'AbortError') {
@@ -48,41 +52,68 @@ export function ShareButton({ story }: { story: StoryDetail }) {
       }
 
       setState('error');
-      setTimeout(() => setState('idle'), 3000);
+      setTimeout(() => setState('idle'), 2500);
     }
   };
 
   const label =
     state === 'working'
-      ? 'Hazırlanıyor…'
+      ? 'Görsel hazırlanıyor'
       : state === 'saved'
-        ? '✓ İndirildi'
+        ? 'Görsel indirildi'
         : state === 'error'
-          ? 'Olmadı, tekrar dene'
-          : 'Görsel paylaş';
+          ? 'Görsel oluşturulamadı, tekrar dene'
+          : 'Görsel olarak paylaş';
 
   return (
     <button
       type="button"
       onClick={share}
       disabled={state === 'working'}
-      className="btn-ghost px-3 py-1.5 text-xs"
-      aria-live="polite"
+      aria-label={label}
+      title={label}
+      className={`rounded-lg p-2 transition hover:bg-ink-100 disabled:opacity-60 dark:hover:bg-ink-800 ${
+        state === 'error' ? 'text-signal-hype' : 'text-ink-500 dark:text-ink-400'
+      }`}
     >
-      <svg
-        className="h-4 w-4"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={1.8}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-      >
-        <path d="M12 15V3m0 0L8 7m4-4 4 4" />
-        <path d="M4 13v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6" />
-      </svg>
-      {label}
+      {/* Announced to assistive tech, which never sees the icon swap. */}
+      <span className="sr-only" aria-live="polite">
+        {label}
+      </span>
+
+      {state === 'working' ? (
+        <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth={2} opacity={0.25} />
+          <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
+        </svg>
+      ) : state === 'saved' ? (
+        <svg
+          className="h-5 w-5 text-signal-trust"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="m5 13 4 4L19 7" />
+        </svg>
+      ) : (
+        <svg
+          className="h-5 w-5"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.8}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M12 15V3m0 0L8 7m4-4 4 4" />
+          <path d="M4 13v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6" />
+        </svg>
+      )}
     </button>
   );
 }
