@@ -77,7 +77,7 @@ export default function HomePage() {
         </p>
       )}
 
-      <nav aria-label="Kategoriler" className="flex gap-2 overflow-x-auto px-4 pb-1 sm:px-5">
+      <nav aria-label="Kategoriler" className="chip-row px-4 pb-1 sm:px-5">
         {SHORTCUTS.map(({ category, href }) => (
           <Link
             key={category}

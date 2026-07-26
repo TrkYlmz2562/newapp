@@ -60,7 +60,7 @@ public class StoryVisibilityTests
     }
 
     [Fact]
-    public void Finance_with_no_classification_at_all_is_held_back()
+    public void An_unclassified_finance_story_is_published_plainly_rather_than_held_back()
     {
         var story = new Story
         {
@@ -70,9 +70,11 @@ public class StoryVisibilityTests
             Commitment = null
         };
 
-        // Unclassified is not the same as harmless: the classifier failing must not
-        // become a way for hearsay to reach a money-related feed.
-        Assert.False(Visible(story));
+        // The deliberate trade. Holding these back meant the whole category vanished
+        // whenever the classifier was unavailable, which is the default install. The
+        // story goes out unannotated instead — no badge, no commentary, and the
+        // detail page says why it is there.
+        Assert.True(Visible(story));
     }
 
     private static Story Corroborated(int sources, int official = 0, bool evidential = false) => new()
@@ -86,40 +88,35 @@ public class StoryVisibilityTests
         HasEvidentialClaim = evidential
     };
 
-    [Fact]
-    public void Two_independent_outlets_are_enough_without_any_classification()
+    [Theory]
+    [InlineData(1, 0)]
+    [InlineData(1, 1)]
+    [InlineData(4, 2)]
+    public void An_unclassified_finance_story_reaches_the_feed_whatever_its_source_count(
+        int sources, int official)
     {
         // The path that keeps finance alive with no LLM configured. The classifier
         // is the only step in the pipeline that needs a model; without this the
         // category would be permanently empty rather than merely unannotated.
-        Assert.True(Visible(Corroborated(sources: 2)));
+        //
+        // A source-count threshold used to sit here and was removed deliberately: it
+        // kept out single-source stories that were perfectly real, and several
+        // outlets carrying the same wire copy corroborate the wire, not the fact.
+        Assert.True(Visible(Corroborated(sources: sources, official: official)));
     }
 
     [Fact]
-    public void One_outlet_alone_is_not_corroboration()
+    public void Reported_speech_is_kept_out_however_many_outlets_carry_it()
     {
-        Assert.False(Visible(Corroborated(sources: 1)));
+        // The one bar left on this path, and the reason removing the source count is
+        // safe: the -mış evidential marks a claim nobody will stand behind, and
+        // repetition does not turn it into a fact.
+        Assert.False(Visible(Corroborated(sources: 1, evidential: true)));
+        Assert.False(Visible(Corroborated(sources: 5, official: 2, evidential: true)));
     }
 
     [Fact]
-    public void An_official_source_needs_no_second_outlet()
-    {
-        // A central bank publishing its own rate decision is the record itself, not
-        // a claim about someone else, so there is nothing to corroborate it against.
-        Assert.True(Visible(Corroborated(sources: 1, official: 1)));
-    }
-
-    [Fact]
-    public void Corroborated_hearsay_is_still_hearsay()
-    {
-        // The reason the evidential check exists: three outlets repeating the same
-        // rumour corroborate the rumour, not the fact. Deterministic, so it still
-        // works with no model — which is exactly the situation this path is for.
-        Assert.False(Visible(Corroborated(sources: 3, evidential: true)));
-    }
-
-    [Fact]
-    public void A_classification_overrides_the_corroboration_path()
+    public void A_classification_overrides_the_unclassified_path()
     {
         // A single-source story the model graded as an official commitment gets in;
         // a well-corroborated one it graded as an unverified claim does not. The

@@ -11,9 +11,6 @@ namespace FocusAI.Application.Common.Mappings;
 /// </summary>
 public static class StoryFilters
 {
-    /// <summary>Fewest independent outlets that count as corroboration on their own.</summary>
-    private const int CorroborationThreshold = 2;
-
     /// <summary>
     /// Whether a story may appear in a reader-facing list.
     /// </summary>
@@ -33,20 +30,24 @@ public static class StoryFilters
     /// A reversed decision drops out whatever its tier, because leaving a withdrawn
     /// decision up is the worst failure this product can have.
     ///
-    /// <b>Corroborated.</b> No classification, but the newsroom test: an official
-    /// source filed it, or two independent outlets report the same thing. This is
-    /// what keeps finance alive when no LLM is configured — the classifier is the
-    /// only step here that needs one, so without this path the category would be
-    /// permanently empty rather than merely unannotated. Nothing is inferred on this
-    /// path and nothing is commented on; the story is published plainly and the card
-    /// carries no commitment badge, because there is no classification to show.
+    /// <b>Unclassified but not hearsay.</b> No classification, and the only bar is
+    /// that the story does not report its claim at second hand. This is what keeps
+    /// finance alive when no LLM is configured — the classifier is the only step
+    /// here that needs one, so without this path the category would be permanently
+    /// empty rather than merely unannotated. Nothing is inferred on this path and
+    /// nothing is commented on; the story is published plainly and the card carries
+    /// no commitment badge, because there is no classification to show.
     ///
-    /// The evidential check guards the corroborated path specifically: three outlets
-    /// repeating the same rumour corroborate the rumour, not the fact. It is
-    /// deterministic text analysis, so it still works with no model — which is
-    /// exactly the situation this path exists for. The classified path does not need
-    /// it, because a model that read the text already graded that claim as
-    /// UnverifiedClaim.
+    /// A source-count threshold used to sit here too and was deliberately removed:
+    /// requiring two outlets kept out single-source stories that were perfectly
+    /// real, and corroboration is a weaker guarantee than it looks anyway — several
+    /// outlets carrying the same wire copy corroborate the wire, not the fact. That
+    /// leaves the evidential check doing the work on its own, which is the honest
+    /// position: it is deterministic text analysis of what the story itself claims,
+    /// it still works with no model, and it is aimed squarely at the -mış reported
+    /// speech that marks a claim nobody will stand behind. The classified path does
+    /// not need it, because a model that read the text already graded such a claim
+    /// as UnverifiedClaim.
     ///
     /// Coarser than <see cref="Domain.Text.CommitmentLexicon.IsPublishable"/>, which
     /// answers a different question — "is this firm enough to headline a
@@ -66,7 +67,5 @@ public static class StoryFilters
           story.Commitment.Tier == CommitmentTier.EnactedDated ||
           story.Commitment.Tier == CommitmentTier.OfficialCommitment ||
           story.Commitment.Tier == CommitmentTier.ConditionalPending)) ||
-        (story.Commitment == null &&
-         !story.HasEvidentialClaim &&
-         (story.OfficialSourceCount >= 1 || story.SourceCount >= CorroborationThreshold));
+        (story.Commitment == null && !story.HasEvidentialClaim);
 }

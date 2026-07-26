@@ -15,8 +15,13 @@ const CATEGORIES: ContentCategory[] = [
   'Tools',
   'Security',
   'Startup',
+  // Finance is a filter like any other. It has no tab of its own on purpose —
+  // a finance development competes in the feed on importance, and only stories
+  // grounded in something real get that far (see StoryFilters on the server).
+  'Finance',
   'Science',
   'Hardware',
+  'Product',
   'Career',
 ];
 
@@ -67,7 +72,7 @@ function ExploreContent() {
     <div className="space-y-4">
       <PageHeader title="Keşfet" subtitle="Kategoriye göre tüm gelişmeler" />
 
-      <div role="tablist" aria-label="Kategori filtresi" className="flex gap-2 overflow-x-auto px-4 pb-1 sm:px-5">
+      <div role="tablist" aria-label="Kategori filtresi" className="chip-row px-4 pb-1 sm:px-5">
         <button
           type="button"
           role="tab"

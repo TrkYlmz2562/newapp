@@ -129,4 +129,26 @@
   .prose-reader p {
     @apply mb-3 leading-relaxed text-ink-700 dark:text-ink-300;
   }
+
+  /*
+   * A row that scrolls sideways on a phone and wraps on anything wider.
+   *
+   * Horizontal scrolling is the right pattern for a chip row on a narrow screen —
+   * wrapping ten chips there costs three rows and pushes the feed off the fold.
+   * On a desktop the container is wide enough to wrap, and the scrollbar that
+   * came with overflow-x sat under the chips as a permanent grey bar.
+   *
+   * The scrollbar is hidden rather than styled: the chips are visibly cut off at
+   * the edge, which is the affordance, and every platform draws its own bar
+   * differently.
+   */
+  .chip-row {
+    @apply flex gap-2 overflow-x-auto sm:flex-wrap sm:overflow-x-visible;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .chip-row::-webkit-scrollbar {
+    display: none;
+  }
 }
