@@ -81,7 +81,7 @@ export function CoverageComparison({ sources, points, onSourceClick }: Props) {
                 type="button"
                 onClick={() => setOpenQuote(openQuote === index ? null : index)}
                 aria-expanded={openQuote === index}
-                className="tap-44 mt-1 inline-flex items-center py-2 font-sans text-[11px] text-ink-500 underline decoration-dotted underline-offset-2 hover:text-ink-800 dark:text-ink-400 dark:hover:text-ink-100"
+                className="tap-44 mt-1 inline-flex items-center py-2 font-mono text-[11px] text-ink-500 underline decoration-dotted underline-offset-2 hover:text-ink-800 dark:text-ink-400 dark:hover:text-ink-100"
               >
                 {openQuote === index ? 'alıntıyı gizle' : 'kaynaktaki cümleyi gör'}
               </button>
@@ -109,7 +109,7 @@ export function CoverageComparison({ sources, points, onSourceClick }: Props) {
               target="_blank"
               rel="noopener noreferrer"
               onClick={onSourceClick}
-              className="flex items-start gap-2 p-2 text-sm transition hover:bg-ink-50 dark:hover:bg-ink-800"
+              className="flex items-start gap-2 rounded-lg p-2 text-sm transition hover:bg-ink-50 dark:hover:bg-ink-800"
             >
               <span className="mt-0.5 shrink-0" aria-hidden="true">
                 {source.isOfficial ? '✅' : '🔗'}

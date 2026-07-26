@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { trUpper } from '@/lib/format';
 
 export function PageHeader({
   title,
@@ -15,47 +14,12 @@ export function PageHeader({
   action?: React.ReactNode;
 }) {
   return (
-    <header className="flex items-baseline justify-between gap-4 px-[18px] pb-3 pt-5">
+    <header className="flex items-start justify-between gap-4 px-4 pb-4 pt-6 sm:px-5">
       <div>
-        <h1 className="font-serif text-[26px] font-semibold leading-none tracking-[-0.02em] text-ink-900 dark:text-ink-50">
-          {title}
-        </h1>
-        {subtitle && (
-          <p
-            className="mt-1.5 font-sans text-[11px] tracking-[0.14em] text-ink-500 dark:text-ink-400"
-            style={{ fontVariationSettings: "'wdth' 84" }}
-          >
-            {trUpper(subtitle)}
-          </p>
-        )}
+        <h1 className="text-2xl font-bold tracking-tight text-ink-900 dark:text-ink-50">{title}</h1>
+        {subtitle && <p className="mt-1 text-sm text-ink-500 dark:text-ink-400">{subtitle}</p>}
       </div>
       {action}
-    </header>
-  );
-}
-
-/**
- * The front-page nameplate. Home only.
- *
- * A newspaper does not greet you — it prints its name, the date, and gets on
- * with it. The old header spent 96px on "Merhaba, Türker" plus a subtitle, on a
- * screen where the audit measured that not one story fitted above the fold.
- * This is the same idea in a third of the height, and it says something the
- * greeting did not: which edition you are holding.
- */
-export function Masthead({ dateLine, note }: { dateLine: string; note?: string }) {
-  return (
-    <header className="border-b-2 border-ink-900 px-[18px] pb-2 pt-4 text-center dark:border-ink-100">
-      <h1 className="font-serif text-[clamp(40px,12vw,60px)] font-semibold leading-[0.9] tracking-[-0.02em] text-ink-900 dark:text-ink-50">
-        Focus AI
-      </h1>
-      <p
-        className="mt-2 font-sans text-[9.5px] font-semibold tracking-[0.22em] text-ink-500 dark:text-ink-400"
-        style={{ fontVariationSettings: "'wdth' 80" }}
-      >
-        {trUpper(dateLine)}
-        {note && ` · ${trUpper(note)}`}
-      </p>
     </header>
   );
 }
@@ -126,7 +90,7 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
   return (
     <div
       role="alert"
-      className="mx-4 border border-rose-200 bg-rose-50 p-5 text-sm text-rose-800
+      className="mx-4 rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-800
                  dark:border-rose-900 dark:bg-rose-950/50 dark:text-rose-200 sm:mx-5"
     >
       <p className="font-medium">{message}</p>

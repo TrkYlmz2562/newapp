@@ -127,7 +127,7 @@ export default function ProfilePage() {
           <div className="flex items-center gap-4">
             <span
               aria-hidden="true"
-              className="grid h-14 w-14 place-items-center bg-focus-100 text-xl font-bold text-focus-700
+              className="grid h-14 w-14 place-items-center rounded-2xl bg-focus-100 text-xl font-bold text-focus-700
                          dark:bg-focus-900/50 dark:text-focus-200"
             >
               {profile.displayName.charAt(0).toUpperCase()}
@@ -216,7 +216,7 @@ export default function ProfilePage() {
                   className={`chip border px-3 py-1.5 text-sm transition ${
                     active
                       ? 'border-focus-500 bg-focus-50 text-focus-700 dark:bg-focus-900/40 dark:text-focus-200'
-                      : 'border-ink-300 bg-transparent text-ink-600 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-300'
+                      : 'border-ink-200 bg-white text-ink-600 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-300'
                   }`}
                 >
                   {topic.name}
@@ -272,7 +272,7 @@ export default function ProfilePage() {
                     await api.profile.toggleMute(topic.slug);
                     await load();
                   }}
-                  className="chip border border-ink-300 bg-transparent px-3 py-1.5 text-sm text-ink-600
+                  className="chip border border-ink-200 bg-white px-3 py-1.5 text-sm text-ink-600
                              dark:border-ink-700 dark:bg-ink-900 dark:text-ink-300"
                 >
                   {topic.name} ✕
@@ -299,7 +299,7 @@ export default function ProfilePage() {
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="bg-ink-50 p-3 dark:bg-ink-800/60">
+    <div className="rounded-xl bg-ink-50 p-3 dark:bg-ink-800/60">
       <dt className="text-[11px] text-ink-500 dark:text-ink-400">{label}</dt>
       <dd className="text-xl font-bold tabular-nums text-ink-900 dark:text-ink-50">{value}</dd>
     </div>

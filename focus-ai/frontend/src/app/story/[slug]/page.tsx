@@ -11,10 +11,12 @@ import { CoverageComparison } from '@/components/CoverageComparison';
 import { FeedbackButtons } from '@/components/FeedbackButtons';
 import { ShareButton } from '@/components/ShareButton';
 import { StoryTimeline } from '@/components/StoryTimeline';
+import { StoryVisual } from '@/components/StoryVisual';
 import { TrustPanel } from '@/components/TrustBadge';
 import { api } from '@/lib/api';
 import { forgetOffline, saveForOffline } from '@/lib/offline';
 import {
+  CATEGORY_EMOJI,
   CATEGORY_LABELS,
   HYPE_LABELS,
   LONGEVITY_LABELS,
@@ -135,7 +137,7 @@ export default function StoryPage() {
   const summary = meaningful(story.summary, story.title);
 
   return (
-    <article className="space-y-5 px-[18px] pt-4">
+    <article className="space-y-5 px-4 pt-6 sm:px-5">
       <nav className="flex items-center justify-between">
         <Link
           href="/"
@@ -153,7 +155,7 @@ export default function StoryPage() {
               aria-pressed={saved}
               aria-label={saved ? 'Kayıtlardan çıkar' : 'Kaydet'}
               title={saved ? 'Kayıtlardan çıkar' : 'Kaydet'}
-              className={`tap-44 p-2 transition hover:bg-ink-100 dark:hover:bg-ink-800 ${
+              className={`tap-44 rounded-lg p-2 transition hover:bg-ink-100 dark:hover:bg-ink-800 ${
                 saved ? 'text-focus-600 dark:text-focus-400' : 'text-ink-500 dark:text-ink-400'
               }`}
             >
@@ -174,58 +176,31 @@ export default function StoryPage() {
         </div>
       </nav>
 
-      {/*
-        A broadsheet article opens with a section flag, then the headline, then a
-        standfirst, then a byline rule. The category chip and its emoji are gone:
-        the flag says the same thing in the page's own voice, and the emoji was
-        the only picture on a page otherwise set entirely in type.
-      */}
-      <header>
-        <p
-          className="font-sans text-[11px] font-bold tracking-[0.16em] text-focus-600 dark:text-focus-300"
-          style={{ fontVariationSettings: "'wdth' 76" }}
-        >
-          {trUpper(CATEGORY_LABELS[story.category])}
-        </p>
+      <header className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-ink-500 dark:text-ink-400">
+          <span className="chip bg-ink-100 text-ink-600 dark:bg-ink-800 dark:text-ink-300">
+            {CATEGORY_EMOJI[story.category]} {CATEGORY_LABELS[story.category]}
+          </span>
+          <time dateTime={story.publishedAt}>{formatDate(story.publishedAt)}</time>
+          <span>·</span>
+          <span>{readingTime(story.readingMinutes)}</span>
+        </div>
 
-        <h1 className="mt-2 text-balance font-serif text-[clamp(28px,7.6vw,38px)] font-semibold leading-[1.02] tracking-[-0.015em] text-ink-900 dark:text-ink-50">
+        <h1 className="font-serif text-2xl font-semibold leading-tight tracking-tight text-ink-900 dark:text-ink-50 sm:text-3xl">
           {story.title}
         </h1>
 
-        {dek && (
-          <p className="mt-3 font-serif text-[17px] italic leading-[1.5] text-ink-600 dark:text-ink-300">
-            {dek}
-          </p>
-        )}
-
-        <div
-          className="mt-4 flex flex-wrap items-center gap-x-2.5 gap-y-1 border-y border-ink-300 py-2 font-sans text-[11.5px] text-ink-500 dark:border-ink-800 dark:text-ink-400"
-          style={{ fontVariationSettings: "'wdth' 86" }}
-        >
-          <time dateTime={story.publishedAt}>{formatDate(story.publishedAt)}</time>
-          <span aria-hidden="true">·</span>
-          <span>{readingTime(story.readingMinutes)}</span>
-          <span aria-hidden="true">·</span>
-          <span>{story.sources.length} kaynak</span>
-        </div>
+        {dek && <p className="text-base text-ink-600 dark:text-ink-300">{dek}</p>}
       </header>
 
-      {/*
-        The photograph runs full measure under the byline, where a paper puts it.
-        The generated plate is gone: on a story with no photograph it printed the
-        top topic name in display type, which the flag above already says.
-      */}
-      {story.heroImageUrl && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={story.heroImageUrl} alt="" className="h-56 w-full object-cover sm:h-72" />
-      )}
+      <StoryVisual story={story} className="h-56 w-full rounded-2xl sm:h-72" size="hero" />
 
       {story.personalNote && (
-        <aside className="border-l-2 border-focus-600 pl-3">
+        <aside className="rounded-2xl border-l-4 border-focus-500 bg-focus-50 p-4 dark:bg-focus-900/30">
           <p className="text-xs font-semibold tracking-wide text-focus-700 dark:text-focus-300">
             {trUpper('Senin stack\'in için')}
           </p>
-          <p className="mt-1 font-serif text-[16px] leading-[1.5] text-ink-700 dark:text-ink-200">{story.personalNote}</p>
+          <p className="mt-1 text-sm text-focus-900 dark:text-focus-100">{story.personalNote}</p>
         </aside>
       )}
 
@@ -319,7 +294,7 @@ export default function StoryPage() {
                   href={link.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block p-2 text-sm text-focus-700 transition hover:bg-ink-50 dark:text-focus-300 dark:hover:bg-ink-800"
+                  className="block rounded-lg p-2 text-sm text-focus-700 transition hover:bg-ink-50 dark:text-focus-300 dark:hover:bg-ink-800"
                 >
                   {link.kind === 'Video' ? '🎬' : link.kind === 'GitHub' ? '💻' : link.kind === 'Paper' ? '📄' : '🔗'}{' '}
                   {link.title}
@@ -357,7 +332,7 @@ function QaBlock({ title, body }: { title: string; body?: string | null }) {
 
 function Verdict({ term, value }: { term: string; value: string }) {
   return (
-    <div className="bg-ink-50 p-3 dark:bg-ink-800/60">
+    <div className="rounded-xl bg-ink-50 p-3 dark:bg-ink-800/60">
       <dt className="text-[11px] tracking-wide text-ink-500 dark:text-ink-400">{trUpper(term)}</dt>
       <dd className="mt-0.5 text-sm font-medium text-ink-800 dark:text-ink-100">{value}</dd>
     </div>

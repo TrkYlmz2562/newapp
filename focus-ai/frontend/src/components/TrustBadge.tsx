@@ -47,7 +47,7 @@ export function TrustPanel({ trust }: { trust: Trust }) {
         className="flex w-full items-center justify-between gap-3 text-left"
       >
         <span className="flex items-center gap-3">
-          <span className={`grid h-11 w-11 place-items-center text-base font-bold ${TONE_CLASSES[tone]}`}>
+          <span className={`grid h-11 w-11 place-items-center rounded-xl text-base font-bold ${TONE_CLASSES[tone]}`}>
             {trust.total}
           </span>
           <span>

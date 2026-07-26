@@ -76,7 +76,7 @@ export function StoryTimeline({ timeline }: { timeline: Timeline }) {
               aria-hidden="true"
             />
             <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-              <span className="font-sans text-[11px] tracking-wide text-ink-500 dark:text-ink-400">
+              <span className="font-mono text-[11px] tracking-wide text-ink-500 dark:text-ink-400">
                 {trUpper(MOMENT_LABEL[moment.kind])}
               </span>
               <span className="text-sm text-ink-800 dark:text-ink-100">{moment.sourceName}</span>

@@ -37,7 +37,7 @@ export function OfflineBanner() {
     <div
       role="status"
       className="sticky top-0 z-50 flex items-center justify-center gap-2 bg-signal-caution/15
-                 px-4 py-1.5 text-center font-sans text-[11px] text-signal-caution
+                 px-4 py-1.5 text-center font-mono text-[11px] text-signal-caution
                  backdrop-blur"
     >
       <span className="h-1.5 w-1.5 flex-none rounded-full bg-signal-caution" aria-hidden="true" />

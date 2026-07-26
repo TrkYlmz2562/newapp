@@ -93,7 +93,7 @@ export function StoryVisual({ story, className = '', size = 'default' }: Props) 
 
   return (
     <div className={`accent-field relative overflow-hidden ${className}`} style={accentVars}>
-      <div className="accent-rule pointer-events-none absolute inset-2 border" aria-hidden="true" />
+      <div className="accent-rule pointer-events-none absolute inset-2 rounded-md border" aria-hidden="true" />
 
       <svg
         viewBox="0 0 24 24"
@@ -125,7 +125,7 @@ export function StoryVisual({ story, className = '', size = 'default' }: Props) 
           // Cased by CSS, not in the DOM: baking capitals into the text makes
           // screen readers spell it out, and Turkish casing would turn the
           // English topic names ("TypeScript") into "TYPESCRİPT".
-          <div className="accent-ink mt-1 truncate font-sans text-[10px] font-bold tracking-[0.12em]">
+          <div className="accent-ink mt-1 truncate font-mono text-[10px] font-bold tracking-[0.12em]">
             {trUpper(kicker)}
           </div>
         )}

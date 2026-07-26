@@ -1,40 +1,10 @@
 import type { Metadata, Viewport } from 'next';
-import { Archivo, Newsreader } from 'next/font/google';
 import './globals.css';
 import { BottomNav } from '@/components/BottomNav';
 import { AuthProvider } from '@/components/AuthProvider';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { ServiceWorkerRegistrar } from '@/components/ServiceWorkerRegistrar';
 import { themeBootstrapScript } from '@/components/ThemeToggle';
-
-/*
- * The two faces the broadsheet is set in. Self-hosted by next/font at build time
- * into /_next/static/media, so no external request is made at run time — which
- * both satisfies the CSP and means sw.js already caches them cache-first, so the
- * page keeps its typography offline.
- *
- * latin-ext is not optional: it is what carries Ğğ, İı and Şş. Without it Turkish
- * headlines fall back mid-word to a different face, which is more visible than
- * having no webfont at all.
- */
-const newsreader = Newsreader({
-  subsets: ['latin', 'latin-ext'],
-  style: ['normal', 'italic'],
-  variable: '--font-display',
-  display: 'swap',
-});
-
-/*
- * Archivo carries every label, folio and figure. The width axis is the point: it
- * is the direct answer to Turkish running 15-20% longer than English, so
- * "GÜVENİLİRLİK" fits a slot that a normal-width grotesque would blow out.
- */
-const archivo = Archivo({
-  subsets: ['latin', 'latin-ext'],
-  axes: ['wdth'],
-  variable: '--font-gothic',
-  display: 'swap',
-});
 
 export const metadata: Metadata = {
   title: {
@@ -73,7 +43,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="tr" className={`${newsreader.variable} ${archivo.variable}`} suppressHydrationWarning>
+    <html lang="tr" suppressHydrationWarning>
       <head>
         {/*
           Blocking on purpose: the theme class must be on <html> before the first
