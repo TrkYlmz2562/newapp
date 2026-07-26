@@ -1,0 +1,109 @@
+# Focus AI — full local stack.
+#
+#   docker compose up --build
+#
+# Works with zero API keys: the backend falls back to local hashing embeddings
+# and extractive summaries, so the pipeline still ingests, clusters, scores and
+# publishes real stories. Add an LLM provider under `Llm` to get the AI summary
+# and analysis layers described in PRD sections 5.2 and 5.5.
+
+name: focus-ai
+
+services:
+  postgres:
+    # pgvector is not optional — the schema declares vector(1536) columns.
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: focusai
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-focusai}
+      POSTGRES_DB: focusai
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U focusai -d focusai']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: ['redis-server', '--save', '60', '1', '--loglevel', 'warning']
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.12
+    environment:
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-focusai-dev-master-key}
+      MEILI_ENV: development
+      MEILI_NO_ANALYTICS: 'true'
+    ports:
+      - '7700:7700'
+    volumes:
+      - meili-data:/meili_data
+    healthcheck:
+      test: ['CMD', 'curl', '-fsS', 'http://localhost:7700/health']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=focusai;Username=focusai;Password=${POSTGRES_PASSWORD:-focusai}
+      ConnectionStrings__Redis: redis:6379
+      # Override in any real deployment. Must be at least 32 bytes or the API
+      # refuses to start rather than issuing forgeable tokens.
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:-focus-ai-local-development-signing-key-change-me-32b}
+      Cors__Origins__0: http://localhost:3000
+      Search__Url: http://meilisearch:7700
+      Search__ApiKey: ${MEILI_MASTER_KEY:-focusai-dev-master-key}
+      Ingestion__EnableBackgroundJobs: 'true'
+      # Point these at a provider to enable AI summaries and analysis:
+      #   Llm__Provider: OpenAI
+      #   Llm__Providers__OpenAI__ApiKey: sk-...
+      #   Embeddings__Provider: OpenAI
+      #   Embeddings__ApiKey: sk-...
+      Llm__Provider: ${LLM_PROVIDER:-Disabled}
+      Llm__Providers__OpenAI__ApiKey: ${OPENAI_API_KEY:-}
+      Llm__Providers__Anthropic__ApiKey: ${ANTHROPIC_API_KEY:-}
+      Llm__Providers__Gemini__ApiKey: ${GEMINI_API_KEY:-}
+      Llm__Providers__OpenRouter__ApiKey: ${OPENROUTER_API_KEY:-}
+      Embeddings__Provider: ${EMBEDDINGS_PROVIDER:-Disabled}
+      Embeddings__ApiKey: ${EMBEDDINGS_API_KEY:-${OPENAI_API_KEY:-}}
+    ports:
+      - '5210:8080'
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        # Build-time, not run-time: see frontend/Dockerfile.
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5210}
+    depends_on:
+      - api
+    ports:
+      - '3000:3000'
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  redis-data:
+  meili-data:

@@ -1,0 +1,117 @@
+using FocusAI.Application.Common.Models;
+using FocusAI.Application.Dtos;
+using FocusAI.Application.Features.Ask;
+using FocusAI.Application.Features.Catalog;
+using FocusAI.Application.Features.Interactions;
+using FocusAI.Application.Features.Search;
+using FocusAI.Application.Features.Stories;
+using FocusAI.Domain.Enums;
+using MediatR;
+using Microsoft.AspNetCore.Mvc;
+
+namespace FocusAI.Api.Endpoints;
+
+public static class StoryEndpoints
+{
+    public static IEndpointRouteBuilder MapStoryEndpoints(this IEndpointRouteBuilder app)
+    {
+        var group = app.MapGroup("/api/stories").WithTags("Stories");
+
+        group.MapGet("/", async (
+                [FromQuery] ContentCategory? category,
+                [FromQuery] string? topic,
+                [FromQuery] int? page,
+                [FromQuery] int? pageSize,
+                [FromQuery] int? withinHours,
+                [FromQuery] bool? personalized,
+                ISender sender,
+                CancellationToken ct) =>
+                Results.Ok(await sender.Send(new GetStoryFeedQuery
+                {
+                    Category = category,
+                    TopicSlug = topic,
+                    Page = page ?? 1,
+                    PageSize = pageSize ?? 20,
+                    WithinHours = withinHours,
+                    Personalized = personalized ?? true
+                }, ct)))
+            .WithSummary("Ana akış. Oturum açıksa kişiselleştirilir.")
+            .Produces<PagedResult<StoryCardDto>>()
+            .AllowAnonymous();
+
+        group.MapGet("/top", async ([FromQuery] int? withinHours, ISender sender, CancellationToken ct) =>
+            {
+                var story = await sender.Send(new GetTopStoryQuery(withinHours ?? 24), ct);
+                return story is null ? Results.NoContent() : Results.Ok(story);
+            })
+            .WithSummary("Günün en önemli gelişmesi.")
+            .Produces<StoryCardDto>()
+            .AllowAnonymous();
+
+        group.MapGet("/{slug}", async (string slug, ISender sender, CancellationToken ct) =>
+                Results.Ok(await sender.Send(new GetStoryDetailQuery(slug), ct)))
+            .WithSummary("Haber detayı: özet, AI yorumu, kaynaklar, ilgili haberler.")
+            .Produces<StoryDetailDto>()
+            .AllowAnonymous();
+
+        group.MapPost("/{storyId:guid}/interactions", async (
+                Guid storyId,
+                InteractionRequest request,
+                ISender sender,
+                CancellationToken ct) =>
+            {
+                await sender.Send(
+                    new RecordInteractionCommand(storyId, request.Type, request.DwellSeconds, request.Surface),
+                    ct);
+
+                return Results.NoContent();
+            })
+            .WithSummary("Okuma/kaydetme gibi etkileşimleri kaydeder.")
+            .RequireAuthorization();
+
+        app.MapGet("/api/search", async (
+                [FromQuery] string q,
+                [FromQuery] int? page,
+                [FromQuery] int? pageSize,
+                ISender sender,
+                CancellationToken ct) =>
+                Results.Ok(await sender.Send(new SearchStoriesQuery(q, page ?? 1, pageSize ?? 20), ct)))
+            .WithTags("Search")
+            .WithSummary("Doğal dil destekli arama.")
+            .Produces<PagedResult<StoryCardDto>>()
+            .AllowAnonymous();
+
+        app.MapPost("/api/ask", async (AskQuestionCommand command, ISender sender, CancellationToken ct) =>
+                Results.Ok(await sender.Send(command, ct)))
+            .WithTags("Search")
+            .WithSummary("Haber arşivi üzerinde soru-cevap.")
+            .Produces<AskResultDto>()
+            .RequireAuthorization()
+            .RequireRateLimiting("ai");
+
+        app.MapGet("/api/topics", async (
+                [FromQuery] bool? all,
+                [FromQuery] TopicKind? kind,
+                ISender sender,
+                CancellationToken ct) =>
+                Results.Ok(await sender.Send(new GetTopicsQuery(!(all ?? false), kind), ct)))
+            .WithTags("Catalog")
+            .WithSummary("İlgi alanı seçimi için konu listesi.")
+            .Produces<IReadOnlyList<TopicDto>>()
+            .AllowAnonymous();
+
+        app.MapGet("/api/sources", async (
+                [FromQuery] SourceCategory? category,
+                ISender sender,
+                CancellationToken ct) =>
+                Results.Ok(await sender.Send(new GetSourcesQuery(category), ct)))
+            .WithTags("Catalog")
+            .WithSummary("Takip edilen kaynaklar.")
+            .Produces<IReadOnlyList<SourceDto>>()
+            .AllowAnonymous();
+
+        return app;
+    }
+
+    public sealed record InteractionRequest(InteractionType Type, int? DwellSeconds, string? Surface);
+}
