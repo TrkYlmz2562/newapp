@@ -139,7 +139,10 @@ export default function StoryPage() {
   return (
     <article className="space-y-5 px-4 pt-6 sm:px-5">
       <nav className="flex items-center justify-between">
-        <Link href="/" className="text-sm text-ink-500 hover:text-ink-800 dark:text-ink-400">
+        <Link
+          href="/"
+          className="tap-44 -ml-2 inline-flex items-center px-2 py-2.5 text-sm text-ink-500 hover:text-ink-800 dark:text-ink-400"
+        >
           ← Geri
         </Link>
         <div className="flex items-center gap-2">
@@ -152,7 +155,7 @@ export default function StoryPage() {
               aria-pressed={saved}
               aria-label={saved ? 'Kayıtlardan çıkar' : 'Kaydet'}
               title={saved ? 'Kayıtlardan çıkar' : 'Kaydet'}
-              className={`rounded-lg p-2 transition hover:bg-ink-100 dark:hover:bg-ink-800 ${
+              className={`tap-44 rounded-lg p-2 transition hover:bg-ink-100 dark:hover:bg-ink-800 ${
                 saved ? 'text-focus-600 dark:text-focus-400' : 'text-ink-500 dark:text-ink-400'
               }`}
             >

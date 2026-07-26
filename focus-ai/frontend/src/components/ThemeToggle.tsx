@@ -93,7 +93,7 @@ export function ThemeToggle() {
             role="radio"
             aria-checked={active}
             onClick={() => choose(option.value)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+            className={`tap-44 rounded-lg px-3 py-2.5 text-xs font-semibold transition ${
               active
                 ? 'bg-ink-900 text-white dark:bg-ink-100 dark:text-ink-900'
                 : 'text-ink-600 hover:bg-ink-100 dark:text-ink-300 dark:hover:bg-ink-800'

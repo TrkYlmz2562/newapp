@@ -64,11 +64,12 @@ export function FeedbackButtons({ storyId, initial = null, surface, className = 
     }
   };
 
+  // tap-44 grows the touch area to 44px without growing the icon or the row.
   const base =
-    'rounded-lg p-1.5 transition hover:bg-ink-100 disabled:opacity-50 dark:hover:bg-ink-800';
+    'tap-row rounded-lg p-1.5 transition hover:bg-ink-100 disabled:opacity-50 dark:hover:bg-ink-800';
 
   return (
-    <div className={`flex items-center gap-0.5 ${className}`}>
+    <div className={`flex items-center gap-1 ${className}`}>
       <button
         type="button"
         onClick={(event) => vote('Helpful', event)}

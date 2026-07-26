@@ -246,7 +246,7 @@ export default function SourcesPage() {
                   </div>
                 </div>
 
-                <div className="flex flex-none items-center gap-0.5">
+                <div className="flex flex-none items-center gap-1">
                   {user && (
                     <button
                       type="button"
@@ -259,7 +259,7 @@ export default function SourcesPage() {
                           : `${source.name} kaynağını takip et`
                       }
                       title={source.isFavorite ? 'Takibi bırak' : 'Takip et'}
-                      className={`rounded-lg p-1.5 transition hover:bg-ink-100 disabled:opacity-50 dark:hover:bg-ink-800 ${
+                      className={`tap-row rounded-lg p-1.5 transition hover:bg-ink-100 disabled:opacity-50 dark:hover:bg-ink-800 ${
                         source.isFavorite ? 'text-focus-600 dark:text-focus-400' : 'text-ink-400 dark:text-ink-500'
                       }`}
                     >
@@ -288,7 +288,7 @@ export default function SourcesPage() {
                         source.isEnabled ? `${source.name} kaynağını kapat` : `${source.name} kaynağını aç`
                       }
                       title={source.isEnabled ? 'Kaynağı kapat' : 'Kaynağı aç'}
-                      className="rounded-lg p-1.5 text-ink-400 transition hover:bg-ink-100 disabled:opacity-50 dark:text-ink-500 dark:hover:bg-ink-800"
+                      className="tap-row rounded-lg p-1.5 text-ink-400 transition hover:bg-ink-100 disabled:opacity-50 dark:text-ink-500 dark:hover:bg-ink-800"
                     >
                       <svg
                         className="h-4 w-4"

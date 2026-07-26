@@ -90,6 +90,64 @@
   }
 
   /*
+   * Grows a control's touch target without growing the control.
+   *
+   * Several controls were well under the 44px minimum — 28px icon buttons, a
+   * 20px "← Geri", a 13px disclosure link — and on a card they sit inside a link
+   * covering the whole card, so a near miss did not do nothing, it navigated to
+   * the story. Padding them out would have pushed the surrounding rows apart; an
+   * invisible pseudo-element does not participate in layout, so density is kept
+   * and the thumb still gets the area.
+   *
+   * Callers must be positioned (`relative`), which the utility itself applies.
+   */
+  .tap-44,
+  .tap-row {
+    @apply relative;
+  }
+
+  .tap-44::after,
+  .tap-row::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    min-height: 44px;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Standalone controls with clear space around them get the full square. */
+  .tap-44::after {
+    min-width: 44px;
+  }
+
+  /*
+   * Height only, for icons packed side by side.
+   *
+   * Three 28px buttons two pixels apart cannot each own a 44px-wide target —
+   * the areas would overlap and the last one in the DOM would silently steal
+   * its neighbour's edge, which is worse than a small button because the wrong
+   * thing happens instead of nothing. Vertical is free, and a vertical miss is
+   * the common one while scrolling, so height is taken and width is left alone
+   * until the row itself is redesigned.
+   */
+  .tap-row::after {
+    min-width: 0;
+  }
+
+  /*
+   * A pointer-device refinement, not a phone one: hover states are meaningless on
+   * touch and iOS emulates them as a sticky state after a tap.
+   */
+  @media (hover: none) {
+    .card {
+      @apply hover:border-ink-200/70 hover:shadow-sm dark:hover:border-ink-800;
+    }
+  }
+
+  /*
    * Category accent, theme-aware. The component sets --accent-light and
    * --accent-dark inline (the value depends on the story's category, so it
    * cannot be a static class); these rules pick the right one per theme, which

@@ -81,7 +81,7 @@ export function CoverageComparison({ sources, points, onSourceClick }: Props) {
                 type="button"
                 onClick={() => setOpenQuote(openQuote === index ? null : index)}
                 aria-expanded={openQuote === index}
-                className="mt-1 font-mono text-[11px] text-ink-500 underline decoration-dotted underline-offset-2 hover:text-ink-800 dark:text-ink-400 dark:hover:text-ink-100"
+                className="tap-44 mt-1 inline-flex items-center py-2 font-mono text-[11px] text-ink-500 underline decoration-dotted underline-offset-2 hover:text-ink-800 dark:text-ink-400 dark:hover:text-ink-100"
               >
                 {openQuote === index ? 'alıntıyı gizle' : 'kaynaktaki cümleyi gör'}
               </button>

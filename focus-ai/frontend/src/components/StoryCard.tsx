@@ -176,7 +176,7 @@ export function StoryCard({ story, rank, variant = 'default' }: Props) {
                 disabled={busy}
                 aria-pressed={saved}
                 aria-label={saved ? 'Kayıtlardan çıkar' : 'Kaydet'}
-                className={`-my-1 rounded-lg p-1.5 transition hover:bg-ink-100 dark:hover:bg-ink-800 ${
+                className={`tap-row -my-1 rounded-lg p-1.5 transition hover:bg-ink-100 dark:hover:bg-ink-800 ${
                   saved ? 'text-focus-600 dark:text-focus-400' : ''
                 }`}
               >
