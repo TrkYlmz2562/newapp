@@ -11,6 +11,11 @@ public sealed record StoryPromptContext
 
     public required IReadOnlyList<string> SourceNames { get; init; }
 
+    /// <summary>
+    /// Language of the articles this context was built from, taken from the source
+    /// registration. Not the output language: the prompts always ask for Turkish.
+    /// It is what tells the pipeline whether extracted text needs translating.
+    /// </summary>
     public string Language { get; init; } = "tr";
 
     public DateTimeOffset PublishedAt { get; init; }
@@ -51,6 +56,17 @@ public sealed record StorySummaryResult
     /// when the model leaves it empty.
     /// </summary>
     public string? VisualEntity { get; init; }
+
+    /// <summary>
+    /// Fields that are still in the article's own language, named with
+    /// <see cref="SummaryField"/>. Empty means the whole result is Turkish.
+    ///
+    /// The producer declares this rather than the consumer guessing: only the code
+    /// that built the result knows whether a field came out of the model or was
+    /// lifted from the source, and guessing from the text would mean running a
+    /// language detector over prose the model was already told to write in Turkish.
+    /// </summary>
+    public IReadOnlyList<string> UntranslatedFields { get; init; } = [];
 
     public string Provider { get; init; } = "none";
 

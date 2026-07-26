@@ -24,6 +24,7 @@ public static class DependencyInjection
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
         services.Configure<LlmOptions>(configuration.GetSection(LlmOptions.SectionName));
         services.Configure<EmbeddingOptions>(configuration.GetSection(EmbeddingOptions.SectionName));
+        services.Configure<TranslationOptions>(configuration.GetSection(TranslationOptions.SectionName));
         services.Configure<SearchOptions>(configuration.GetSection(SearchOptions.SectionName));
         services.Configure<IngestionOptions>(configuration.GetSection(IngestionOptions.SectionName));
         services.Configure<Application.Common.Options.IngestionSettings>(
@@ -112,6 +113,34 @@ public static class DependencyInjection
         services.AddScoped<IContentAiService, ContentAiService>();
         services.AddScoped<ICommitmentClassifier, CommitmentClassifier>();
         services.AddScoped<ICoverageComparer, CoverageComparer>();
+
+        services.AddHttpClient<LocalTranslator>((provider, client) =>
+        {
+            var options = provider.GetRequiredService<IOptions<TranslationOptions>>().Value;
+            var baseUrl = string.IsNullOrWhiteSpace(options.BaseUrl)
+                ? "http://translator:8080/v1/"
+                : options.BaseUrl;
+
+            client.BaseAddress = new Uri(baseUrl.EndsWith('/') ? baseUrl : baseUrl + "/");
+            client.Timeout = TimeSpan.FromSeconds(Math.Clamp(options.TimeoutSeconds, 10, 900));
+
+            if (!string.IsNullOrWhiteSpace(options.ApiKey))
+            {
+                client.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", options.ApiKey);
+            }
+        });
+
+        // Resolving the concrete client only when translation is switched on keeps
+        // the default path free of an HttpClient that would never be used.
+        services.AddScoped<IContentTranslator>(provider =>
+        {
+            var options = provider.GetRequiredService<IOptions<TranslationOptions>>().Value;
+
+            return options.Enabled
+                ? provider.GetRequiredService<LocalTranslator>()
+                : new DisabledTranslator();
+        });
 
         services.AddHttpClient<OpenAiEmbeddingService>((provider, client) =>
         {

@@ -69,9 +69,13 @@ public static class SeedData
         // belge" seviyesi pratikte buradan gelir.
         // NOT: TCMB'nin ayrı "PPK Kararları" akışı Aralık 2025'te güncellenmeyi
         // sessizce bıraktı; faiz kararları Basın Duyuruları akışında geliyor.
+        // Dil, akışın dilidir — kurumun ülkesi değil. Basın Duyuruları TR akışından
+        // geliyor, Veri Duyuruları ise TCMB'nin İngilizce akışından: ikisi aynı
+        // kurumun ama farklı dilde. Yanlış etiketlemek çeviri katmanının Türkçeyi
+        // Türkçeye çevirmesine yol açardı.
         Official("TCMB Basın Duyuruları", "tcmb-duyuru", "https://www.tcmb.gov.tr/",
             "https://www.tcmb.gov.tr/wps/wcm/connect/TR/TCMB+TR/Bottom+Menu/Diger/RSS/Basin+Duyurulari",
-            ContentCategory.Finance, 0.98),
+            ContentCategory.Finance, 0.98, "tr"),
         Official("TCMB Veri Duyuruları", "tcmb-veri", "https://www.tcmb.gov.tr/",
             "https://www.tcmb.gov.tr/wps/wcm/connect/EN/TCMB+EN/Bottom+Menu/Other/RSS/Data",
             ContentCategory.Finance, 0.98),
@@ -170,7 +174,8 @@ public static class SeedData
         string website,
         string feed,
         ContentCategory category,
-        double trustWeight) =>
+        double trustWeight,
+        string language = "en") =>
         new()
         {
             Name = name,
@@ -182,7 +187,8 @@ public static class SeedData
             DefaultContentCategory = category,
             IsOfficial = true,
             TrustWeight = trustWeight,
-            FetchIntervalMinutes = 60
+            FetchIntervalMinutes = 60,
+            Language = language
         };
 
     /// <summary>

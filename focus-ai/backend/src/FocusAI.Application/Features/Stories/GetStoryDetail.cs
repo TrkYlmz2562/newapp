@@ -34,7 +34,12 @@ public sealed class GetStoryDetailQueryHandler(
             .Include(s => s.Articles).ThenInclude(a => a.Source)
             .FirstOrDefaultAsync(s => s.Slug == slug, cancellationToken);
 
-        if (story is null || story.Status == StoryStatus.Suppressed)
+        // Only published stories are servable. A Draft or Enriching story still
+        // carries the raw article headline, no summary and — until enrichment
+        // finishes — a slug that is allowed to change; the feed and search already
+        // filter on Published, so serving one here just meant a direct link showed
+        // a half-built card in the source language.
+        if (story is null || story.Status != StoryStatus.Published)
         {
             throw NotFoundException.For("Haber", request.Slug);
         }

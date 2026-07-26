@@ -21,6 +21,7 @@ public sealed record EnrichStoriesCommand(int BatchSize = 25, Guid? StoryId = nu
 public sealed class EnrichStoriesCommandHandler(
     IApplicationDbContext db,
     IContentAiService ai,
+    IContentTranslator translator,
     ISearchIndex searchIndex,
     IDateTimeProvider clock,
     ICommitmentClassifier commitmentClassifier,
@@ -75,13 +76,20 @@ public sealed class EnrichStoriesCommandHandler(
 
             try
             {
+                // Captured before the status is overwritten: it is the only signal
+                // for "has anyone been able to link to this story yet", which is
+                // what decides whether the permalink may still change.
+                var wasPublished = story.Status == StoryStatus.Published;
+
                 story.Status = StoryStatus.Enriching;
 
                 var context = BuildPromptContext(story);
                 var summary = await ai.SummarizeAsync(context, cancellationToken);
                 var analysis = await ai.AnalyzeAsync(context, cancellationToken);
 
-                ApplySummary(story, summary, now);
+                summary = await TranslateAsync(story, context, summary, cancellationToken);
+
+                ApplySummary(story, summary, now, wasPublished);
                 ApplyAnalysis(story, analysis, now);
                 ApplyTopics(story, summary.TopicSlugs, topicsBySlug, topicTerms);
                 ApplyScores(story, summary, now);
@@ -140,6 +148,11 @@ public sealed class EnrichStoriesCommandHandler(
         {
             Title = story.Title,
             PublishedAt = story.PublishedAt,
+            // The language the extracted sentences are actually in. The first
+            // article is the one the story's title, dek and body come from, so its
+            // language is the one that matters; an English story with one Turkish
+            // sibling article is still an English story.
+            Language = articles.FirstOrDefault()?.Language ?? "en",
             ArticleExcerpts = articles
                 .Select(a =>
                 {
@@ -152,6 +165,159 @@ public sealed class EnrichStoriesCommandHandler(
                 .Distinct()
                 .ToList()
         };
+    }
+
+    /// <summary>
+    /// Turns any field still carrying the article's own language into Turkish.
+    /// </summary>
+    /// <remarks>
+    /// This is the seam that covers both leaks at once. On the no-LLM path the
+    /// extractive fallback declares every field it lifted from the article, so the
+    /// whole card gets translated. On the LLM path the model writes Turkish, and
+    /// only the fields it declined to fill — which the pipeline would otherwise
+    /// silently backfill from the source — are declared and translated.
+    ///
+    /// Nothing here can fail the story. The translator returns the original text
+    /// for anything it cannot render safely, so the worst case is exactly the
+    /// behaviour that existed before translation was wired in.
+    /// </remarks>
+    private async Task<StorySummaryResult> TranslateAsync(
+        Story story,
+        StoryPromptContext context,
+        StorySummaryResult summary,
+        CancellationToken cancellationToken)
+    {
+        if (!translator.IsEnabled || !TranslationGuard.NeedsTurkish(context.Language))
+        {
+            return summary;
+        }
+
+        var fields = summary.UntranslatedFields.ToHashSet(StringComparer.Ordinal);
+
+        // The dek is the one field the LLM path backfills from the story itself
+        // rather than from the result, so the producer cannot declare it. Only on
+        // a first enrichment, where the existing dek is still the clustering
+        // excerpt — on a re-run it is last run's output and already Turkish.
+        if (string.IsNullOrWhiteSpace(summary.Dek) &&
+            !string.IsNullOrWhiteSpace(story.Dek) &&
+            story.Summary is null)
+        {
+            summary = summary with { Dek = story.Dek };
+            fields.Add(SummaryField.Dek);
+        }
+
+        if (fields.Count == 0)
+        {
+            return summary;
+        }
+
+        // One flat list so the translator sees the whole story's work at once and
+        // can budget across it, rather than being called per field.
+        var segments = new List<string>();
+        var slots = new List<string>();
+
+        void Queue(string field, string? text)
+        {
+            if (fields.Contains(field) && !string.IsNullOrWhiteSpace(text))
+            {
+                segments.Add(text);
+                slots.Add(field);
+            }
+        }
+
+        Queue(SummaryField.Title, summary.Title);
+        Queue(SummaryField.Dek, summary.Dek);
+        Queue(SummaryField.Summary, summary.Summary);
+        Queue(SummaryField.WhyItMatters, summary.WhyItMatters);
+        Queue(SummaryField.WhoIsAffected, summary.WhoIsAffected);
+        Queue(SummaryField.WhatShouldIDo, summary.WhatShouldIDo);
+
+        var keyPointStart = segments.Count;
+        if (fields.Contains(SummaryField.KeyPoints))
+        {
+            foreach (var point in summary.KeyPoints.Where(p => !string.IsNullOrWhiteSpace(p)))
+            {
+                segments.Add(point);
+                slots.Add(SummaryField.KeyPoints);
+            }
+        }
+
+        if (segments.Count == 0)
+        {
+            return summary;
+        }
+
+        IReadOnlyList<string> translated;
+
+        try
+        {
+            translated = await translator.TranslateAsync(segments, context.Language, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "FocusAI translation failed for {StorySlug}", story.Slug);
+            return summary;
+        }
+
+        // A backend that returns the wrong shape is not trusted to have returned
+        // the right text either.
+        if (translated.Count != segments.Count)
+        {
+            logger.LogWarning(
+                "FocusAI translator returned {Actual} segment(s) for {Expected}; ignoring the result",
+                translated.Count,
+                segments.Count);
+
+            return summary;
+        }
+
+        string Take(string field)
+        {
+            var index = slots.IndexOf(field);
+            return index < 0 ? string.Empty : translated[index];
+        }
+
+        var result = summary;
+
+        if (fields.Contains(SummaryField.Title) && Take(SummaryField.Title) is { Length: > 0 } title)
+        {
+            result = result with { Title = title };
+        }
+
+        if (fields.Contains(SummaryField.Dek) && Take(SummaryField.Dek) is { Length: > 0 } dek)
+        {
+            result = result with { Dek = dek };
+        }
+
+        if (fields.Contains(SummaryField.Summary) && Take(SummaryField.Summary) is { Length: > 0 } body)
+        {
+            result = result with { Summary = body };
+        }
+
+        if (fields.Contains(SummaryField.WhyItMatters) && Take(SummaryField.WhyItMatters) is { Length: > 0 } why)
+        {
+            result = result with { WhyItMatters = why };
+        }
+
+        if (fields.Contains(SummaryField.WhoIsAffected) && Take(SummaryField.WhoIsAffected) is { Length: > 0 } who)
+        {
+            result = result with { WhoIsAffected = who };
+        }
+
+        if (fields.Contains(SummaryField.WhatShouldIDo) && Take(SummaryField.WhatShouldIDo) is { Length: > 0 } todo)
+        {
+            result = result with { WhatShouldIDo = todo };
+        }
+
+        if (fields.Contains(SummaryField.KeyPoints) && segments.Count > keyPointStart)
+        {
+            result = result with
+            {
+                KeyPoints = translated.Skip(keyPointStart).ToList()
+            };
+        }
+
+        return result with { UntranslatedFields = [] };
     }
 
     /// <summary>
@@ -290,7 +456,7 @@ public sealed class EnrichStoriesCommandHandler(
         story.Comparison.UpdatedAt = now;
     }
 
-    private void ApplySummary(Story story, StorySummaryResult result, DateTimeOffset now)
+    private void ApplySummary(Story story, StorySummaryResult result, DateTimeOffset now, bool wasPublished)
     {
         if (story.Summary is null)
         {
@@ -334,11 +500,18 @@ public sealed class EnrichStoriesCommandHandler(
         {
             story.Title = FieldLimits.Cap(result.Title, FieldLimits.StoryTitle)!;
 
-            // The slug is a permalink: only mint one while the story is still a
-            // draft, so links shared from a published card never break.
-            if (story.Status != StoryStatus.Published && string.IsNullOrWhiteSpace(story.Slug))
+            // The slug is a permalink, so it may only change while nobody could
+            // have linked to the story — which is exactly until it first publishes.
+            //
+            // The previous condition also required an empty slug, which clustering
+            // never leaves behind, so it never fired: every story kept the slug
+            // minted from its source-language headline forever. Minting here is
+            // what makes the URL match the title the reader actually sees. It is
+            // deterministic in (title, id), so a retried enrichment lands on the
+            // same slug rather than churning.
+            if (!wasPublished)
             {
-                story.Slug = Slugger.SlugifyUnique(result.Title, story.Id);
+                story.Slug = Slugger.SlugifyUnique(story.Title, story.Id);
             }
         }
 

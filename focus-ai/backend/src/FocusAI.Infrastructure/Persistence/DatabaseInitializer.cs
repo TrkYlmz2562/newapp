@@ -83,6 +83,9 @@ public sealed class DatabaseInitializer(
                 current.DefaultContentCategory = source.DefaultContentCategory;
                 current.IsOfficial = source.IsOfficial;
                 current.TrustWeight = source.TrustWeight;
+                // Also not operator state, and now load-bearing: the language is
+                // what decides whether a story's extracted text gets translated.
+                current.Language = source.Language;
                 continue;
             }
 

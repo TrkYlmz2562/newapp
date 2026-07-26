@@ -51,6 +51,50 @@ public sealed class LlmProviderOptions
     public int TimeoutSeconds { get; set; } = 90;
 }
 
+/// <summary>
+/// Self-hosted machine translation for text the summariser did not write. Off by
+/// default: it costs a container and roughly 2 GB of RAM, and the pipeline is
+/// fully functional without it — it just publishes source-language sentences on
+/// the no-LLM path.
+/// </summary>
+public sealed class TranslationOptions
+{
+    public const string SectionName = "Translation";
+
+    public bool Enabled { get; set; }
+
+    /// <summary>
+    /// Any OpenAI-compatible chat endpoint. The reference setup is llama.cpp's
+    /// server, which speaks that shape and needs no API key.
+    /// </summary>
+    public string BaseUrl { get; set; } = "http://translator:8080/v1/";
+
+    public string ApiKey { get; set; } = string.Empty;
+
+    /// <summary>llama.cpp ignores this and serves whatever it loaded; it is sent for logs.</summary>
+    public string Model { get; set; } = "hy-mt2-1.8b";
+
+    /// <summary>
+    /// Generous by design. A 1.8B model on CPU runs at roughly 11 tokens/second,
+    /// so a long paragraph legitimately takes half a minute. This only ever runs
+    /// inside the background enrichment job, where that is nobody's latency.
+    /// </summary>
+    public int TimeoutSeconds { get; set; } = 180;
+
+    /// <summary>
+    /// Longest text sent in one request. Small models degrade sharply on long
+    /// inputs, so fields are split on sentence boundaries to stay under this.
+    /// </summary>
+    public int MaxSegmentChars { get; set; } = 700;
+
+    /// <summary>
+    /// Ceiling on requests per story, across all its fields. A story that needs
+    /// more than this has its remaining fields left in the source language rather
+    /// than stalling the batch behind one pathological article.
+    /// </summary>
+    public int MaxRequestsPerStory { get; set; } = 24;
+}
+
 public sealed class EmbeddingOptions
 {
     public const string SectionName = "Embeddings";

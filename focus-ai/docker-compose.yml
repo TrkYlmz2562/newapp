@@ -56,6 +56,56 @@ services:
       timeout: 5s
       retries: 5
 
+  # Kendi bilgisayarında çalışan çeviri modeli. VARSAYILAN OLARAK KAPALI —
+  # ~2 GB RAM ve ilk açılışta ~1,1 GB'lık bir indirme demek. Açmak için:
+  #
+  #   docker compose --profile translate up -d
+  #   # ve .env içine:  TRANSLATION_ENABLED=true
+  #
+  # Ne işe yarıyor: LLM yapılandırılmadığında (ya da Gemini düştüğünde) boru
+  # hattı, makalenin kendi cümlelerini çıkarıp yayınlıyor. İngilizce bir kaynakta
+  # bu, Türkçe okura İngilizce kart demek. Bu servis o yolu Türkçeleştiriyor.
+  # LLM özet katmanının yerine GEÇMEZ: özet yazmak editöryal bir iş, Türkçe onun
+  # yan ürünü — çevirmen bunların hiçbirini yapamaz.
+  #
+  # Neden bu model: LibreTranslate'in en-tr motoru Kasım 2021 tarihli ~65M
+  # parametrelik bir Argos paketi ve ölçtüğümüzde "React 20 ships" ifadesini
+  # "20 gemi", "bug" kelimesini "boğa" diye çeviriyor. Teknoloji haberinde bu,
+  # İngilizce bırakmaktan kötü. Hy-MT2 (Apache-2.0) ürün adlarını, sürüm
+  # numaralarını ve CVE kimliklerini olduğu gibi koruyor.
+  #
+  # 32 GB RAM veya >=6 GB VRAM'li bir GPU varsa Hy-MT2-7B'ye geçmek belirgin bir
+  # kalite sıçraması; tek değişen aşağıdaki dosya adı.
+  translator:
+    profiles: ['translate']
+    image: ghcr.io/ggml-org/llama.cpp:server
+    command:
+      - '-hf'
+      - '${TRANSLATION_MODEL_REPO:-tencent/Hunyuan-MT2-1.8B-GGUF:Q4_K_M}'
+      - '--host'
+      - '0.0.0.0'
+      - '--port'
+      - '8080'
+      - '--ctx-size'
+      - '4096'
+      # Sıra derinliği 1: enrichment tek işçi, paralel istek gelmiyor. Fazlası
+      # sadece RAM yer.
+      - '--parallel'
+      - '1'
+    volumes:
+      # Model önbelleği. Bu olmadan her yeniden başlatma ~1,1 GB indiriyor.
+      - translator-models:/root/.cache/llama.cpp
+    ports:
+      - '8081:8080'
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fsS http://localhost:8080/health || exit 1']
+      # İlk açılış modeli indirip yüklüyor; start_period bu yüzden uzun.
+      start_period: 600s
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
   api:
     build:
       context: ./backend
@@ -99,6 +149,10 @@ services:
       Llm__Providers__OpenRouter__ApiKey: ${OPENROUTER_API_KEY:-}
       Embeddings__Provider: ${EMBEDDINGS_PROVIDER:-Disabled}
       Embeddings__ApiKey: ${EMBEDDINGS_API_KEY:-${OPENAI_API_KEY:-}}
+      # Yukarıdaki `translator` servisi ile birlikte açılır. Kapalıyken boru hattı
+      # aynen eskisi gibi çalışır, sadece LLM'siz yolda kaynak dilinde yayınlar.
+      Translation__Enabled: ${TRANSLATION_ENABLED:-false}
+      Translation__BaseUrl: http://translator:8080/v1/
     ports:
       - '5210:8080'
     restart: unless-stopped
@@ -119,3 +173,4 @@ volumes:
   postgres-data:
   redis-data:
   meili-data:
+  translator-models:

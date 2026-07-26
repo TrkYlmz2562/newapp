@@ -98,6 +98,7 @@ Frontend  ←  Personalization  ←  Importance Score  ←  LLM Summary  ←  Ve
 | Tekilleştirme | `StoryClusterer` | 3 aşama: tam hash → SimHash (Hamming ≤ 10) → kosinüs benzerliği (≥ 0.86) |
 | Embedding | `IEmbeddingService` | OpenAI uyumlu uç ya da yerel hash tabanlı yedek |
 | Özet | `IContentAiService` | 7 sağlayıcı; başarısızlıkta extractive yedek |
+| Çeviri | `IContentTranslator` | Opsiyonel; yalnızca modelin yazmadığı metni Türkçeleştirir |
 | Güven skoru | `TrustScoreCalculator` | 5 bileşen, ağırlıklı; kırılım kullanıcıya gösterilir |
 | Önem skoru | `ImportanceScoreCalculator` | Günlük özetin sıralamasını belirler |
 | Kişiselleştirme | `PersonalizationScorer` | Sessize alınanlar sert filtre; gerisi ağırlıklı harman |
@@ -114,6 +115,43 @@ Sağlayıcı bağımsızdır; `appsettings.json` içindeki `Llm` bölümünden s
 | Anthropic | Messages API |
 | Gemini | `generateContent` |
 | _(tanımsız)_ | Extractive yedek — uydurmaz, alıntılar |
+
+---
+
+## Çeviri (opsiyonel, varsayılan kapalı)
+
+LLM tanımlı değilken hat, makalenin kendi cümlelerini çıkarıp yayınlar. İngilizce
+bir kaynakta bu, Türkçe okura İngilizce kart demektir. Bu katman o yolu
+Türkçeleştirir; ayrıca LLM yolunda modelin başlık ya da spot döndürmediği
+durumlarda kaynak metne düşen alanları da kapsar.
+
+```bash
+docker compose --profile translate up -d      # ~1,1 GB indirir, ~2 GB RAM
+# .env:  TRANSLATION_ENABLED=true
+```
+
+**LLM özet katmanının yerine geçmez.** Özet yazmak editöryal bir iştir — neyin
+önemli olduğuna, neyin dışarıda kalacağına karar vermek — ve Türkçe onun yan
+ürünüdür. Bir çevirmen bunların hiçbirini yapamaz.
+
+**Neden LibreTranslate değil.** Ölçtük: en→tr motoru Kasım 2021 tarihli ~65M
+parametrelik bir Argos paketi ve indekste daha yenisi yok. "React 20 ships a new
+compiler" → "Reak 20 **gemi** yeni bir derleyici", "fixes a bug" → "bir **boğa**
+düzeltiyor", "was released" → "**serbest bırakıldı**". Aynı çıktı canlı bir
+public instance'ta da doğrulandı. Teknoloji haberinde bunu yayınlamak İngilizce
+bırakmaktan kötüdür: okur İngilizce bir cümlenin etrafından dolaşabilir,
+kaynağın söylemediği bir şeyi söyleyen Türkçe cümlenin etrafından dolaşamaz.
+NLLB-200 de eleniyor — her boyutu CC-BY-**NC**, ticari kullanıma kapalı.
+
+Varsayılan model Tencent **Hy-MT2-1.8B** (Apache-2.0); ürün adlarını, sürüm
+numaralarını ve CVE kimliklerini olduğu gibi koruyor. 32 GB RAM ya da ≥6 GB
+VRAM'li bir GPU varsa `TRANSLATION_MODEL_REPO` ile 7B sürümüne geçmek belirgin
+bir kalite sıçraması.
+
+Her aday çeviri `TranslationGuard`'dan geçer ve **kapalı devre başarısız olur**:
+sürüm numarası, ürün adı ya da CVE kimliği kaybolmuşsa, uzunluk oranı çökmüş ya
+da patlamışsa, veya yanıt başka bir alfabedeyse çeviri reddedilir ve kaynak metin
+olduğu gibi yayınlanır. Reddedilmek bir hata değil, beklenen davranıştır.
 
 ---
 

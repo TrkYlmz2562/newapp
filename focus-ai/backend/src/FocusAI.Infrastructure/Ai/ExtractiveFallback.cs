@@ -95,6 +95,13 @@ internal static class ExtractiveFallback
             // here. Without this the card would have no subject to show on the
             // (default) no-LLM path, which is most of the feed in development.
             VisualEntity = VisualSubject.FromTitle(context.Title, FieldLimits.VisualEntity),
+            // Every text field above is the article's own words, so on a
+            // non-Turkish source every one of them is a non-Turkish field. Saying
+            // so here is what lets the pipeline translate them without having to
+            // guess which parts of a summary a model wrote. VisualEntity is
+            // excluded on purpose: it is a product name, version or CVE id, and
+            // those are meant to survive translation unchanged.
+            UntranslatedFields = SummaryField.AllExtracted,
             Provider = "extractive-fallback",
             Model = $"kaynaklar: {sourceList}"
         };
