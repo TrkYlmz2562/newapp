@@ -2,6 +2,7 @@ using FluentValidation;
 using FocusAI.Application.Common.Exceptions;
 using FocusAI.Application.Common.Interfaces;
 using FocusAI.Application.Dtos;
+using FocusAI.Domain.Common;
 using FocusAI.Domain.Entities.Content;
 using FocusAI.Domain.Entities.Gamification;
 using FocusAI.Domain.Entities.Users;
@@ -29,8 +30,8 @@ public sealed class RegisterCommandValidator : AbstractValidator<RegisterCommand
             .MaximumLength(128);
         RuleFor(x => x.DisplayName).NotEmpty().MaximumLength(80);
         RuleFor(x => x.InterestSlugs)
-            .Must(slugs => slugs is null || slugs.Count <= 40)
-            .WithMessage("En fazla 40 ilgi alanı seçilebilir.");
+            .Must(slugs => slugs is null || slugs.Count <= FieldLimits.MaxInterests)
+            .WithMessage($"En fazla {FieldLimits.MaxInterests} ilgi alanı seçilebilir.");
     }
 }
 

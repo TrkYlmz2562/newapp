@@ -36,6 +36,13 @@ public static class FieldLimits
     public const int ModelName = 100;
 
     /// <summary>
+    /// Upper bound on how many interests a user may select. Comfortably above
+    /// the seeded topic count (~43) so "select all" works, while still capping
+    /// a malicious client from posting thousands of slugs.
+    /// </summary>
+    public const int MaxInterests = 100;
+
+    /// <summary>
     /// Truncates on a word boundary and marks the cut, so a clipped sentence
     /// reads as deliberate rather than as corrupted data.
     /// </summary>

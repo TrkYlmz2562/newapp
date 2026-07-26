@@ -1,6 +1,7 @@
 using FluentValidation;
 using FocusAI.Application.Common.Exceptions;
 using FocusAI.Application.Common.Interfaces;
+using FocusAI.Domain.Common;
 using FocusAI.Domain.Entities.Users;
 using FocusAI.Domain.Enums;
 using MediatR;
@@ -102,8 +103,8 @@ public sealed class UpdateInterestsCommandValidator : AbstractValidator<UpdateIn
     {
         RuleFor(x => x.TopicSlugs).NotNull();
         RuleFor(x => x.TopicSlugs.Count)
-            .LessThanOrEqualTo(40)
-            .WithMessage("En fazla 40 ilgi alanı seçilebilir.");
+            .LessThanOrEqualTo(FieldLimits.MaxInterests)
+            .WithMessage($"En fazla {FieldLimits.MaxInterests} ilgi alanı seçilebilir.");
     }
 }
 

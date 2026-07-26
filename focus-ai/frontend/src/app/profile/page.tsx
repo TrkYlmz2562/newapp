@@ -59,6 +59,20 @@ export default function ProfilePage() {
     }
   };
 
+  const setAllInterests = async (all: boolean) => {
+    if (saving) return;
+
+    setSaving(true);
+    try {
+      await api.profile.setInterests(all ? topics.map((t) => t.slug) : []);
+      await load();
+    } catch {
+      setError('İlgi alanları kaydedilemedi.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const updateNotification = async (key: string, value: boolean) => {
     if (!profile) return;
 
@@ -153,6 +167,21 @@ export default function ProfilePage() {
           <p className="mb-3 text-xs text-ink-500 dark:text-ink-400">
             Seçtiklerin haberlerin sıralamasını doğrudan etkiler.
           </p>
+          <div className="mb-3 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setAllInterests(selectedSlugs.size !== topics.length)}
+              disabled={saving}
+              className="text-sm font-medium text-focus-600 disabled:opacity-60 dark:text-focus-400"
+            >
+              {selectedSlugs.size === topics.length && topics.length > 0
+                ? 'Tümünü kaldır'
+                : 'Tümünü seç'}
+            </button>
+            <span className="text-xs text-ink-500 dark:text-ink-400">
+              {selectedSlugs.size}/{topics.length} seçili
+            </span>
+          </div>
           <div className="flex flex-wrap gap-2">
             {topics.map((topic) => {
               const active = selectedSlugs.has(topic.slug);

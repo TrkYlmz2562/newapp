@@ -133,7 +133,26 @@ export default function RegisterPage() {
             Seçtiklerin ilk günden itibaren akışını şekillendirir. Sonradan değiştirebilirsin.
           </p>
 
-          <div className="mt-5 flex max-h-[50vh] flex-wrap gap-2 overflow-y-auto">
+          <div className="mt-3 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() =>
+                setSelected((current) =>
+                  current.size === topics.length && topics.length > 0
+                    ? new Set()
+                    : new Set(topics.map((t) => t.slug)),
+                )
+              }
+              className="text-sm font-medium text-focus-600 dark:text-focus-400"
+            >
+              {selected.size === topics.length && topics.length > 0 ? 'Tümünü kaldır' : 'Tümünü seç'}
+            </button>
+            <span className="text-xs text-ink-500 dark:text-ink-400">
+              {selected.size}/{topics.length} seçili
+            </span>
+          </div>
+
+          <div className="mt-3 flex max-h-[50vh] flex-wrap gap-2 overflow-y-auto">
             {topics.map((topic) => {
               const active = selected.has(topic.slug);
               return (
