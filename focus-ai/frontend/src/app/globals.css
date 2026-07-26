@@ -67,8 +67,20 @@
            dark:border-ink-700 dark:bg-ink-900 dark:text-ink-200 dark:hover:bg-ink-800;
   }
 
+  /*
+   * 16px is not a style choice here, it is the iOS zoom threshold.
+   *
+   * Safari magnifies the whole viewport whenever a focused input has a font-size
+   * below 16px, and because the app allows pinch-zoom (maximumScale: 5) nothing
+   * ever zooms it back out — the reader is left on a magnified, sideways-panning
+   * page and has to pinch out by hand. The search box is the first interactive
+   * element on the home screen, so this fired constantly.
+   *
+   * text-[16px] rather than text-base so a future type-scale change to `base`
+   * cannot silently drop it back under the threshold.
+   */
   .input {
-    @apply w-full rounded-xl border border-ink-200 bg-white px-4 py-2.5 text-sm text-ink-900
+    @apply w-full rounded-xl border border-ink-200 bg-white px-4 py-3 text-[16px] text-ink-900
            placeholder:text-ink-400 focus:border-focus-500 focus:outline-none focus:ring-2
            focus:ring-focus-500/30 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-100;
   }
