@@ -51,6 +51,32 @@ const MAX_RATE = 2.5;
 /** Chrome stops speaking after roughly fifteen seconds unless it is nudged. */
 const KEEP_ALIVE_MS = 10_000;
 
+/**
+ * Speed and voice are remembered on the device, not on the account.
+ *
+ * They describe the hardware you are listening on, not who you are: the rate
+ * that works in headphones is not the rate that works through a laptop speaker,
+ * and the voice list differs per device anyway. Syncing them through the profile
+ * would mean a phone preference silently changing what the desktop does.
+ */
+const RATE_KEY = 'focusai.speech.rate';
+const VOICE_KEY = 'focusai.speech.voice';
+
+function readStoredRate(): number {
+  if (typeof localStorage === 'undefined') return 1;
+
+  const raw = Number(localStorage.getItem(RATE_KEY));
+  return Number.isFinite(raw) && raw >= MIN_RATE && raw <= MAX_RATE ? raw : 1;
+}
+
+function remember(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Private mode, or storage full. A forgotten preference is not worth an error.
+  }
+}
+
 function isTurkish(voice: SpeechSynthesisVoice): boolean {
   return voice.lang.toLowerCase().replace('_', '-').startsWith('tr');
 }
@@ -62,6 +88,7 @@ class SpeechController {
   private index = -1;
   private status: SpeechStatus = 'idle';
   private rate = 1;
+  private restored = false;
   private voice: SpeechSynthesisVoice | null = null;
   private voices: SpeechSynthesisVoice[] = [];
   private ready = false;
@@ -85,6 +112,14 @@ class SpeechController {
 
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
+
+    // Restored here rather than in the field initialiser: the controller is
+    // constructed during the server bundle's module evaluation too, where there
+    // is no localStorage to read.
+    if (!this.restored && typeof localStorage !== 'undefined') {
+      this.restored = true;
+      this.rate = readStoredRate();
+    }
 
     // First subscriber wakes the voice list; Safari hands it back asynchronously
     // and reports an empty array until it does.
@@ -124,6 +159,7 @@ class SpeechController {
     if (next === this.rate) return;
 
     this.rate = next;
+    remember(RATE_KEY, String(next));
     this.emit();
 
     // Rate is fixed when an utterance starts and cannot be changed mid-flight, so
@@ -139,6 +175,7 @@ class SpeechController {
     if (!found || found === this.voice) return;
 
     this.voice = found;
+    remember(VOICE_KEY, found.voiceURI);
     this.emit();
 
     if (this.status === 'speaking') {
@@ -307,7 +344,14 @@ class SpeechController {
       this.voices = voices;
       this.ready = true;
 
-      this.voice ??= voices.find(isTurkish) ?? null;
+      // The remembered voice first, then any Turkish one. A stored voice that is
+      // no longer installed simply falls through rather than leaving it unset.
+      const preferred = typeof localStorage === 'undefined' ? null : localStorage.getItem(VOICE_KEY);
+
+      this.voice ??=
+        (preferred ? voices.find((voice) => voice.voiceURI === preferred) : undefined) ??
+        voices.find(isTurkish) ??
+        null;
 
       this.emit();
       return true;

@@ -195,6 +195,29 @@ export function SpeechPlayer({
 
       {error && <p className="mt-2 text-xs text-signal-hype">{error}</p>}
 
+      {/*
+        Speed is shown whether or not anything is playing. Hiding it until
+        playback starts means the reader who wants 1,5× has to listen at 1×
+        first, and it is the setting they came for.
+      */}
+      <div className="chip-row mt-3 flex gap-1.5" role="group" aria-label="Okuma hızı">
+        {SPEECH_RATES.map((rate) => (
+          <button
+            key={rate}
+            type="button"
+            onClick={() => speech.setRate(rate)}
+            aria-pressed={state.rate === rate}
+            className={`tap-row flex-none rounded-lg px-2.5 py-1 font-mono text-[11px] transition ${
+              state.rate === rate
+                ? 'bg-focus-600 text-white'
+                : 'bg-ink-100 text-ink-600 hover:bg-ink-200 dark:bg-ink-800 dark:text-ink-300 dark:hover:bg-ink-700'
+            }`}
+          >
+            {rate.toLocaleString('tr-TR')}×
+          </button>
+        ))}
+      </div>
+
       {active && (
         <>
           <div className="mt-3 flex items-center gap-2">
@@ -226,28 +249,27 @@ export function SpeechPlayer({
             )}
           </div>
 
-          {/*
-            Speed lives behind playback rather than beside it: it is set once and
-            then left alone, and on a phone it would otherwise take the width the
-            title needs.
-          */}
-          <div className="chip-row mt-2 flex gap-1.5" role="group" aria-label="Okuma hızı">
-            {SPEECH_RATES.map((rate) => (
-              <button
-                key={rate}
-                type="button"
-                onClick={() => speech.setRate(rate)}
-                aria-pressed={state.rate === rate}
-                className={`tap-row flex-none rounded-lg px-2.5 py-1 font-mono text-[11px] transition ${
-                  state.rate === rate
-                    ? 'bg-focus-600 text-white'
-                    : 'bg-ink-100 text-ink-600 hover:bg-ink-200 dark:bg-ink-800 dark:text-ink-300 dark:hover:bg-ink-700'
-                }`}
+          {/* Only worth showing when there is a choice; most devices ship one
+              Turkish voice and a select with a single option is furniture. */}
+          {state.turkishVoices.length > 1 && (
+            <label className="mt-2 flex items-center gap-2">
+              <span className="font-mono text-[11px] tracking-[0.13em] text-ink-500 dark:text-ink-400">
+                {trUpper('ses')}
+              </span>
+              <select
+                value={state.voiceUri ?? ''}
+                onChange={(event) => speech.setVoice(event.target.value)}
+                className="min-w-0 flex-1 rounded-lg border border-ink-200 bg-white px-2 py-1 text-[13px]
+                           text-ink-700 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-200"
               >
-                {rate.toLocaleString('tr-TR')}×
-              </button>
-            ))}
-          </div>
+                {state.turkishVoices.map((voice) => (
+                  <option key={voice.voiceURI} value={voice.voiceURI}>
+                    {voice.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
         </>
       )}
     </section>
