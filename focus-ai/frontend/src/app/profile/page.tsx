@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
+import { MentorSetup } from '@/components/MentorSetup';
 import { ErrorState, PageHeader, SignInPrompt } from '@/components/Shell';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { api } from '@/lib/api';
@@ -159,6 +160,8 @@ export default function ProfilePage() {
             Kaynakları incele
           </Link>
         </section>
+
+        <MentorSetup />
 
         {/* PRD section 15: kept deliberately plain — progress, not pressure. */}
         <section className="card p-5">
