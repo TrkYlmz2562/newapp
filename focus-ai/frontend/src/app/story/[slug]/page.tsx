@@ -10,6 +10,7 @@ import { CommitmentPanel, CorroborationNote } from '@/components/CommitmentBadge
 import { CoverageComparison } from '@/components/CoverageComparison';
 import { FeedbackButtons } from '@/components/FeedbackButtons';
 import { LearnButton } from '@/components/LearnButton';
+import { LearningOutput } from '@/components/LearningOutput';
 import { ShareButton } from '@/components/ShareButton';
 import { SpeechPlayer } from '@/components/SpeechPlayer';
 import { VoiceSetupNotice } from '@/components/VoiceSetupHelp';
@@ -45,6 +46,9 @@ export default function StoryPage() {
   // Owned here, not by the buttons: the row appears twice and the two copies
   // have to agree. See the note on FeedbackButtons' `value`.
   const [feedback, setFeedback] = useState<StoryFeedback | null>(null);
+  // Same reason as the verdict: the action row is drawn twice, so the two copies
+  // have to read one answer for "is this story already taken into learning".
+  const [learningBriefId, setLearningBriefId] = useState<string | null>(null);
   const openedAt = useRef<number>(Date.now());
 
   useEffect(() => {
@@ -61,6 +65,7 @@ export default function StoryPage() {
         setStory(result);
         setSaved(result.isBookmarked);
         setFeedback(result.feedback ?? null);
+        setLearningBriefId(result.learningBriefId ?? null);
         openedAt.current = Date.now();
 
         if (user) {
@@ -159,6 +164,8 @@ export default function StoryPage() {
           onToggleSave={toggleSave}
           feedback={feedback}
           onFeedback={setFeedback}
+          learningBriefId={learningBriefId}
+          onLearningQueued={setLearningBriefId}
         />
       </nav>
 
@@ -278,8 +285,6 @@ export default function StoryPage() {
         )
       )}
 
-      {user && <LearnButton storyId={story.id} />}
-
       {story.timeline && <StoryTimeline timeline={story.timeline} />}
 
       <CoverageComparison
@@ -326,8 +331,20 @@ export default function StoryPage() {
           onToggleSave={toggleSave}
           feedback={feedback}
           onFeedback={setFeedback}
+          learningBriefId={learningBriefId}
+          onLearningQueued={setLearningBriefId}
         />
       </div>
+
+      {/* Last, because it is the last decision: what is worth studying about a
+          story is something the reader knows once they have finished it. */}
+      {user && (
+        <LearningOutput
+          storyId={story.id}
+          briefId={learningBriefId}
+          onQueued={setLearningBriefId}
+        />
+      )}
 
       {story.related.length > 0 && (
         <section className="space-y-3">
@@ -355,6 +372,8 @@ function StoryActions({
   onToggleSave,
   feedback,
   onFeedback,
+  learningBriefId,
+  onLearningQueued,
 }: {
   story: StoryDetail;
   canSave: boolean;
@@ -362,6 +381,8 @@ function StoryActions({
   onToggleSave: () => void;
   feedback: StoryFeedback | null;
   onFeedback: (next: StoryFeedback | null) => void;
+  learningBriefId: string | null;
+  onLearningQueued: (briefId: string) => void;
 }) {
   return (
     <div className="flex items-center gap-2">
@@ -391,6 +412,16 @@ function StoryActions({
             <path d="M6 4h12v17l-6-4-6 4z" />
           </svg>
         </button>
+      )}
+
+      {/* Immediately after save, and gated the same way: both write a row against
+          the reader, so neither means anything to a signed-out visitor. */}
+      {canSave && (
+        <LearnButton
+          storyId={story.id}
+          briefId={learningBriefId}
+          onQueued={onLearningQueued}
+        />
       )}
     </div>
   );

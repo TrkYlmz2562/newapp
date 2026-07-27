@@ -34,6 +34,47 @@ public class BriefComposerTests
     }
 
     [Fact]
+    public void Source_links_are_appended_at_the_foot_of_the_prompt()
+    {
+        var prompt = BriefComposer.Compose(File(Story(sources:
+        [
+            new BriefSourceRef("Anthropic", true, Published, "https://anthropic.com/news/mcp"),
+            new BriefSourceRef("The Verge", false, Published.AddHours(2), "https://theverge.com/mcp")
+        ])));
+
+        Assert.Contains("## Kaynak bağlantıları", prompt);
+        Assert.Contains("[Anthropic](https://anthropic.com/news/mcp)", prompt);
+        Assert.Contains("[The Verge](https://theverge.com/mcp)", prompt);
+
+        // The evidence block above stays link-free, and the addresses land after the
+        // closing instructions rather than in the middle of the reading.
+        Assert.True(
+            prompt.IndexOf("## Kaynak bağlantıları", StringComparison.Ordinal) >
+            prompt.IndexOf("## Nasıl başla", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void A_source_without_an_address_contributes_no_link_line()
+    {
+        var prompt = BriefComposer.Compose(File(Story(sources:
+        [
+            new BriefSourceRef("Anthropic", true, Published, "https://anthropic.com/news/mcp"),
+            new BriefSourceRef("Adsız kaynak", false, Published.AddHours(1))
+        ])));
+
+        Assert.Contains("[Anthropic](https://anthropic.com/news/mcp)", prompt);
+        Assert.DoesNotContain("[Adsız kaynak](", prompt);
+    }
+
+    [Fact]
+    public void No_addresses_at_all_means_no_link_section()
+    {
+        var prompt = BriefComposer.Compose(File(Story()));
+
+        Assert.DoesNotContain("Kaynak bağlantıları", prompt);
+    }
+
+    [Fact]
     public void A_single_unofficial_source_is_marked_as_a_claim_not_a_fact()
     {
         var prompt = BriefComposer.Compose(

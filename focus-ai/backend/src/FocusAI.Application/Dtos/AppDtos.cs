@@ -113,6 +113,18 @@ public sealed record LearningBriefDto(
 
 public sealed record BriefStoryRefDto(Guid StoryId, string Slug, string Title);
 
+/// <summary>
+/// One story the reader has taken into learning, carried as the ordinary feed
+/// card so the Öğren tab can render it exactly as Keşfet does.
+/// </summary>
+/// <remarks>
+/// The brief travels alongside rather than replacing the card: the tab lists
+/// stories and opens the story, and the lesson is generated from the foot of that
+/// page — but the row still has to know which brief it belongs to and whether the
+/// prompt has been produced yet.
+/// </remarks>
+public sealed record LearningStoryDto(StoryCardDto Story, Guid BriefId, BriefStatus Status);
+
 public sealed record TrendPointDto(DateOnly PeriodStart, int StoryCount, int WeightedImportance);
 
 public sealed record TrendDto(

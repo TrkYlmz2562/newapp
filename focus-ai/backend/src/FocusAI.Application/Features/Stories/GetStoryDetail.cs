@@ -61,6 +61,19 @@ public sealed class GetStoryDetailQueryHandler(
             .AsNoTracking()
             .AnyAsync(b => b.UserId == userId && b.StoryId == story.Id, cancellationToken);
 
+        // Unfinished only: having studied this once does not make the control on the
+        // page read as already-taken, because wanting to study it again is a new
+        // lesson — the same rule QueueStoryBriefCommand applies.
+        var learningBriefId = userId is null
+            ? null
+            : await db.LearningBriefs
+                .AsNoTracking()
+                .Where(b => b.UserId == userId &&
+                            b.Status != BriefStatus.Done &&
+                            b.Stories.Any(s => s.StoryId == story.Id))
+                .Select(b => (Guid?)b.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+
         // Newest verdict wins — interactions are append-only, so a changed mind
         // leaves both rows behind.
         var feedback = userId is null
@@ -94,6 +107,7 @@ public sealed class GetStoryDetailQueryHandler(
         return detail with
         {
             IsBookmarked = isBookmarked,
+            LearningBriefId = learningBriefId,
             Timeline = timeline is null
                 ? null
                 : new TimelineDto(

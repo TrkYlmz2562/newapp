@@ -6,6 +6,7 @@ import type {
   DigestPeriod,
   InteractionType,
   LearningBrief,
+  LearningStory,
   LearningSuggestion,
   MentorPersona,
   Paged,
@@ -325,6 +326,9 @@ export const api = {
      * Lesson briefs. `queueStory` and `queueDaily` are free; only `generate`
      * spends a model call, which is why it is a separate press.
      */
+    /** What the Öğren tab lists: stories taken into learning, as feed cards. */
+    stories: (take = 50) => request<LearningStory[]>(`/api/learning/stories${qs({ take })}`),
+
     briefs: {
       list: (take = 50) => request<LearningBrief[]>(`/api/learning/briefs${qs({ take })}`),
 

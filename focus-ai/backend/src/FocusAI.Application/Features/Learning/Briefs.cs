@@ -93,10 +93,19 @@ public static class BriefQueries
             // One line per outlet, dated by its earliest piece — an outlet that
             // filed three follow-ups is still one outlet, and printing it three
             // times would read as corroboration.
-            .Select(group => new BriefSourceRef(
-                group.First().Source!.Name,
-                group.First().Source!.IsOfficial,
-                group.Min(a => a.PublishedAt)))
+            .Select(group =>
+            {
+                // The outlet's own earliest piece, so the link matches the date
+                // printed beside it. Canonical first: it is the address with the
+                // tracking parameters already stripped.
+                var first = group.OrderBy(a => a.PublishedAt).First();
+
+                return new BriefSourceRef(
+                    first.Source!.Name,
+                    first.Source!.IsOfficial,
+                    first.PublishedAt,
+                    string.IsNullOrWhiteSpace(first.CanonicalUrl) ? first.Url : first.CanonicalUrl);
+            })
             .ToList(),
         Comparisons = story.Comparison?.Points
             .Select(p => new BriefComparisonPoint(p.Text, p.Kind, p.Quote, p.QuoteSource))
@@ -440,6 +449,69 @@ public sealed class GetBriefsQueryHandler(
 
         // The prompt is several kilobytes; the list never shows it.
         return briefs.Select(b => BriefQueries.ToDto(b, includePrompt: false)).ToList();
+    }
+}
+
+/// <summary>
+/// The Öğren tab's list: stories taken into learning, as feed cards.
+/// </summary>
+/// <remarks>
+/// Story-origin briefs only. The daily suggestion has its own block at the top of
+/// the tab, and the five stories it pulls in as backing evidence would read as
+/// five separate things to study if they were listed here as well.
+/// </remarks>
+public sealed record GetLearningStoriesQuery(int Take = 50) : IRequest<IReadOnlyList<LearningStoryDto>>;
+
+public sealed class GetLearningStoriesQueryHandler(
+    IApplicationDbContext db,
+    ICurrentUser currentUser) : IRequestHandler<GetLearningStoriesQuery, IReadOnlyList<LearningStoryDto>>
+{
+    public async Task<IReadOnlyList<LearningStoryDto>> Handle(
+        GetLearningStoriesQuery request,
+        CancellationToken cancellationToken)
+    {
+        if (currentUser.UserId is not { } userId)
+        {
+            throw new UnauthorizedException();
+        }
+
+        var briefs = await db.LearningBriefs
+            .AsNoTracking()
+            .Where(b => b.UserId == userId &&
+                        b.Origin == BriefOrigin.Story &&
+                        b.Status != BriefStatus.Done)
+            .OrderByDescending(b => b.CreatedAt)
+            .Take(Math.Clamp(request.Take, 1, 200))
+            .Select(b => new
+            {
+                b.Id,
+                b.Status,
+                b.CreatedAt,
+                StoryIds = b.Stories.OrderBy(s => s.Position).Select(s => s.StoryId).ToList()
+            })
+            .ToListAsync(cancellationToken);
+
+        var storyIds = briefs.SelectMany(b => b.StoryIds).Distinct().ToList();
+        if (storyIds.Count == 0)
+        {
+            return [];
+        }
+
+        // The same projection the feed and Keşfet use, so a card cannot drift into
+        // looking different depending on which tab drew it.
+        var cards = await db.Stories
+            .AsNoTracking()
+            .Where(s => storyIds.Contains(s.Id))
+            .Select(StoryProjections.ToCard())
+            .ToListAsync(cancellationToken);
+
+        var byId = cards.ToDictionary(c => c.Id);
+
+        return briefs
+            .SelectMany(b => b.StoryIds.Select(id => (Brief: b, StoryId: id)))
+            .Where(row => byId.ContainsKey(row.StoryId))
+            .Select(row => new LearningStoryDto(byId[row.StoryId], row.Brief.Id, row.Brief.Status))
+            .ToList();
     }
 }
 

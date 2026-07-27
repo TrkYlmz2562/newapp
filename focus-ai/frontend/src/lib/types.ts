@@ -198,6 +198,12 @@ export interface StoryDetail {
   /** How the story developed. Null only when it has no member articles. */
   timeline?: Timeline | null;
   isBookmarked: boolean;
+  /**
+   * The unfinished lesson this story already belongs to, if any. An id rather than
+   * a flag: the page needs to know both that it is taken and where to send the
+   * reader, without queueing a second brief for the same story.
+   */
+  learningBriefId?: string | null;
   /** This reader's own verdict, when they gave one. Null means they have not said. */
   feedback?: StoryFeedback | null;
   personalNote?: string | null;
@@ -378,6 +384,17 @@ export interface LearningBrief {
   stories: BriefStoryRef[];
   /** Only the single-brief endpoints fill this; the list omits it. */
   prompt?: string | null;
+}
+
+/**
+ * A story taken into learning, carried as an ordinary feed card so the Öğren tab
+ * renders exactly as Keşfet does. The brief travels alongside: the tab lists
+ * stories and opens the story, and the lesson is produced from the foot of it.
+ */
+export interface LearningStory {
+  story: StoryCard;
+  briefId: string;
+  status: BriefStatus;
 }
 
 export interface MentorPersona {

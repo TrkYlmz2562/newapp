@@ -60,7 +60,16 @@ public sealed record BriefStoryFile
     public string? PersonalNote { get; init; }
 }
 
-public sealed record BriefSourceRef(string Name, bool IsOfficial, DateTimeOffset PublishedAt);
+/// <param name="Url">
+/// Where the outlet's earliest piece on this story lives, canonicalised. Null when
+/// the article carried no usable address. Carried so the mentor can be pointed at
+/// the reporting itself rather than asked to take the file's word for it.
+/// </param>
+public sealed record BriefSourceRef(
+    string Name,
+    bool IsOfficial,
+    DateTimeOffset PublishedAt,
+    string? Url = null);
 
 public sealed record BriefComparisonPoint(
     string Text,

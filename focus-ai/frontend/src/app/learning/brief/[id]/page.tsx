@@ -205,13 +205,6 @@ export default function BriefPage() {
               />
             </div>
 
-            <p className="text-center text-[11.5px] text-ink-500 dark:text-ink-400">
-              Mentor'u bir kez Claude Projesi olarak kurarsan ilk düğme yeter —{' '}
-              <Link href="/profile#mentor" className="text-focus-600 underline underline-offset-2 dark:text-focus-400">
-                kurulum
-              </Link>
-            </p>
-
             {brief.demoIdea && (
               <section className="card p-4">
                 <p className="font-mono text-[11px] tracking-[0.13em] text-focus-600 dark:text-focus-400">

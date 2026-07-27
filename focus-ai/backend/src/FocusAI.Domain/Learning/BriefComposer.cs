@@ -106,6 +106,7 @@ public static class BriefComposer
 
         AppendPlan(text, plan);
         AppendClosing(text, plan);
+        AppendSourceLinks(text, file);
 
         return text.ToString().TrimEnd() + "\n";
     }
@@ -400,6 +401,60 @@ public static class BriefComposer
             text.AppendLine(
                 "*(Bu dosya çapa sorular olmadan üretildi — plan modeli yanıt vermedi. " +
                 "Giriş seviyesini kendin öner, ama yine de sor.)*");
+        }
+    }
+
+    /// <summary>
+    /// Every source address, gathered at the foot of the file.
+    /// </summary>
+    /// <remarks>
+    /// The per-story source list above prints who reported it and when, deliberately
+    /// without URLs — a paragraph of evidence reads badly with links threaded
+    /// through it. But a mentor asked to go past the summary has nowhere to go
+    /// without them, and a language model asked for a link it was never given will
+    /// invent one. So they are collected here instead, once, in the position the
+    /// closing instructions already occupy: appended by this composer, never by a
+    /// model, so every address is one the app actually fetched.
+    /// </remarks>
+    private static void AppendSourceLinks(StringBuilder text, BriefCaseFile file)
+    {
+        var linked = file.Stories
+            .Select(story => (story.Title, Sources: story.Sources
+                .Where(source => NotBlank(source.Url))
+                .OrderBy(source => source.PublishedAt)
+                .Take(MaxSources)
+                .ToList()))
+            .Where(entry => entry.Sources.Count > 0)
+            .ToList();
+
+        if (linked.Count == 0)
+        {
+            return;
+        }
+
+        text.AppendLine();
+        text.AppendLine("---");
+        text.AppendLine();
+        text.AppendLine("## Kaynak bağlantıları");
+        text.AppendLine();
+        text.AppendLine(
+            "Bir iddiayı teyit etmem ya da ayrıntısına inmem gerekirse bunlar. " +
+            "Buradakiler dışında bir bağlantı uydurma.");
+
+        foreach (var (title, sources) in linked)
+        {
+            text.AppendLine();
+
+            // Headed per story even when there is only one: the reader can hold
+            // several stories in a lesson, and a flat list of twelve links with no
+            // idea which belongs to what is not a citation.
+            text.AppendLine($"**{OneLine(title)}**");
+
+            foreach (var source in sources)
+            {
+                var badge = source.IsOfficial ? " · resmî" : string.Empty;
+                text.AppendLine($"- [{OneLine(source.Name)}]({source.Url}) · {FormatDate(source.PublishedAt)}{badge}");
+            }
         }
     }
 

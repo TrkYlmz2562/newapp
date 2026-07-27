@@ -217,6 +217,16 @@ public sealed record StoryDetailDto
 
     public bool IsBookmarked { get; init; }
 
+    /// <summary>
+    /// The unfinished lesson this story already belongs to, if any.
+    /// </summary>
+    /// <remarks>
+    /// An id rather than a flag because the page needs both answers: whether to
+    /// draw the Öğren control as already taken, and where "öğrenme çıktısı üret"
+    /// should go without first queueing a second brief for the same story.
+    /// </remarks>
+    public Guid? LearningBriefId { get; init; }
+
     /// <summary>This reader's own verdict, when they gave one. See <see cref="StoryCardDto.Feedback"/>.</summary>
     public InteractionType? Feedback { get; init; }
 

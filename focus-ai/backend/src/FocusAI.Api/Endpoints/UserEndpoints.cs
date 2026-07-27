@@ -171,6 +171,11 @@ public static class UserEndpoints
             .WithSummary("Öğrenme kuyruğu ve üretilmiş brifler.")
             .Produces<IReadOnlyList<LearningBriefDto>>();
 
+        group.MapGet("/stories", async ([FromQuery] int? take, ISender sender, CancellationToken ct) =>
+                Results.Ok(await sender.Send(new GetLearningStoriesQuery(take ?? 50), ct)))
+            .WithSummary("Öğrenmeye alınan haberler, akış kartı biçiminde.")
+            .Produces<IReadOnlyList<LearningStoryDto>>();
+
         group.MapGet("/briefs/{id:guid}", async (Guid id, ISender sender, CancellationToken ct) =>
                 Results.Ok(await sender.Send(new GetBriefQuery(id), ct)))
             .WithSummary("Bir brif, kopyalanacak promt dâhil.")

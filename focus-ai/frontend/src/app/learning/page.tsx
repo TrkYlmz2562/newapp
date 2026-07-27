@@ -3,11 +3,16 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/components/AuthProvider';
-import { BriefRow } from '@/components/BriefRow';
 import { EmptyState, ErrorState, PageHeader, SignInPrompt } from '@/components/Shell';
+import { StoryCard, StoryCardSkeleton } from '@/components/StoryCard';
 import { api, describeError } from '@/lib/api';
 import { trUpper } from '@/lib/format';
-import type { LearningBrief, LearningSuggestion, StoryCard } from '@/lib/types';
+import type {
+  LearningBrief,
+  LearningStory,
+  LearningSuggestion,
+  StoryCard as Story,
+} from '@/lib/types';
 
 const KIND_ICONS: Record<string, string> = {
   docs: '📘',
@@ -19,7 +24,7 @@ const KIND_ICONS: Record<string, string> = {
 
 interface Bookmark {
   id: string;
-  story: StoryCard;
+  story: Story;
 }
 
 /**
@@ -38,6 +43,7 @@ export default function LearningPage() {
 
   const [today, setToday] = useState<LearningSuggestion | null>(null);
   const [briefs, setBriefs] = useState<LearningBrief[]>([]);
+  const [learning, setLearning] = useState<LearningStory[]>([]);
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -54,14 +60,16 @@ export default function LearningPage() {
     setError(null);
 
     try {
-      const [todayResult, briefResult, bookmarkResult] = await Promise.all([
+      const [todayResult, briefResult, learningResult, bookmarkResult] = await Promise.all([
         api.learning.today().catch(() => undefined),
         api.learning.briefs.list().catch(() => []),
+        api.learning.stories().catch(() => []),
         api.bookmarks.list(1, 50).catch(() => ({ items: [] as Bookmark[] })),
       ]);
 
       setToday(todayResult ?? null);
       setBriefs(briefResult ?? []);
+      setLearning(learningResult ?? []);
       setBookmarks(bookmarkResult.items ?? []);
     } catch {
       setError('Öğrenme sayfası yüklenemedi.');
@@ -74,23 +82,13 @@ export default function LearningPage() {
     if (!authLoading) void load();
   }, [authLoading, load]);
 
-  /** Story ids that already have a lesson in flight, so they are not offered twice. */
+  /** Story ids already in a lesson, so a bookmark is not listed twice. */
   const claimed = useMemo(
-    () =>
-      new Set(
-        briefs
-          .filter((brief) => brief.status !== 'Done')
-          .flatMap((brief) => brief.stories.map((story) => story.storyId)),
-      ),
-    [briefs],
+    () => new Set(learning.map((entry) => entry.story.id)),
+    [learning],
   );
 
   const unclaimed = bookmarks.filter((bookmark) => !claimed.has(bookmark.story.id));
-
-  const replaceBrief = (id: string) => (next: LearningBrief | null) =>
-    setBriefs((current) =>
-      next ? current.map((brief) => (brief.id === id ? next : brief)) : current.filter((brief) => brief.id !== id),
-    );
 
   const queue = async (run: () => Promise<LearningBrief>, key: string) => {
     setQueueing(key);
@@ -225,66 +223,54 @@ export default function LearningPage() {
           )}
         </section>
 
-        {/* ── Kaydettiklerimden ─────────────────────────────────────────── */}
+        {/*
+          ── Çalışacaklarım ──────────────────────────────────────────────
+
+          Feed cards, the same ones Keşfet draws, and they open the story rather
+          than the lesson. The lesson is made at the foot of the story now, which
+          is the only place the reader has actually read the thing they are about
+          to ask to be taught — so this list has no business being a different
+          kind of row with a different destination.
+        */}
         <section className="space-y-2">
-          <div className="flex items-baseline justify-between gap-3">
-            <h2 className="font-mono text-[11px] tracking-[0.13em] text-ink-500 dark:text-ink-400">
-              {trUpper('Kaydettiklerimden')}
-            </h2>
-            <Link
-              href="/profile#mentor"
-              className="text-[11.5px] text-focus-600 underline-offset-2 hover:underline dark:text-focus-400"
-            >
-              Mentor kurulumu
-            </Link>
-          </div>
+          <h2 className="font-mono text-[11px] tracking-[0.13em] text-ink-500 dark:text-ink-400">
+            {trUpper('Çalışacaklarım')}
+          </h2>
 
           {queueError && <p className="text-xs text-signal-hype">{queueError}</p>}
 
           {loading ? (
-            <div className="card space-y-2 p-4">
-              <div className="skeleton h-3 w-20" />
-              <div className="skeleton h-5 w-2/3" />
-            </div>
-          ) : briefs.length === 0 && unclaimed.length === 0 ? (
+            <StoryCardSkeleton />
+          ) : learning.length === 0 ? (
             <EmptyState
               title="Henüz çalışılacak bir şey yok"
-              description="Bir haberi kaydet ya da kartındaki 'Öğren' düğmesine dokun; buraya düşer ve prompt üretebilirsin."
+              description="Bir haberi aç ve üstteki ✦ düğmesine dokun; buraya düşer, çıktısını haberin altından üretirsin."
             />
           ) : (
             <div className="space-y-3">
-              {briefs.map((brief) => (
-                <BriefRow key={brief.id} brief={brief} onChanged={replaceBrief(brief.id)} />
-              ))}
-
-              {/* Bookmarks nobody has asked to study yet. Listed rather than
-                  auto-queued: saving is "read this later", which is not the same
-                  as "teach me this". */}
-              {unclaimed.map((bookmark) => (
-                <div key={bookmark.id} className="card flex items-center gap-3 p-4">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-serif text-[15px] font-medium text-ink-800 dark:text-ink-100">
-                      {bookmark.story.title}
-                    </p>
-                    <p className="mt-0.5 font-mono text-[11px] text-ink-400 dark:text-ink-500">
-                      {trUpper('kayıtlı')}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      queue(() => api.learning.briefs.queueStory(bookmark.story.id), bookmark.id)
-                    }
-                    disabled={queueing !== null}
-                    className="btn-ghost flex-none px-3 py-2 text-[13px]"
-                  >
-                    {queueing === bookmark.id ? '…' : 'Öğren'}
-                  </button>
-                </div>
+              {learning.map((entry) => (
+                <StoryCard key={entry.briefId} story={entry.story} />
               ))}
             </div>
           )}
         </section>
+
+        {/* Bookmarks nobody has asked to study yet. Listed rather than
+            auto-queued: saving is "read this later", which is not the same as
+            "teach me this". */}
+        {!loading && unclaimed.length > 0 && (
+          <section className="space-y-2">
+            <h2 className="font-mono text-[11px] tracking-[0.13em] text-ink-500 dark:text-ink-400">
+              {trUpper('Kaydettiklerim')}
+            </h2>
+
+            <div className="space-y-3">
+              {unclaimed.map((bookmark) => (
+                <StoryCard key={bookmark.id} story={bookmark.story} />
+              ))}
+            </div>
+          </section>
+        )}
       </div>
     </div>
   );
