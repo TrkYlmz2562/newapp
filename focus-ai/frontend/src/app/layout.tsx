@@ -4,6 +4,7 @@ import './globals.css';
 import { BottomNav } from '@/components/BottomNav';
 import { AuthProvider } from '@/components/AuthProvider';
 import { OfflineBanner } from '@/components/OfflineBanner';
+import { SpeechDock } from '@/components/SpeechDock';
 import { ServiceWorkerRegistrar } from '@/components/ServiceWorkerRegistrar';
 import { themeBootstrapScript } from '@/components/ThemeToggle';
 
@@ -85,8 +86,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AuthProvider>
           <div className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col">
             <OfflineBanner />
-            <main className="flex-1 pb-24">{children}</main>
+            {/* The dock is fixed and cannot push anything, so the page reserves
+                its measured height on top of the tab bar's. --dock-h is set by
+                the dock itself and absent whenever nothing is playing. */}
+            <main className="flex-1 pb-[calc(6rem+var(--dock-h,0px))]">{children}</main>
             <BottomNav />
+            <SpeechDock />
           </div>
         </AuthProvider>
         <ServiceWorkerRegistrar />

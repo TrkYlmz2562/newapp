@@ -1,10 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useId, useRef, useState } from 'react';
 import { api, describeError } from '@/lib/api';
-import { trUpper } from '@/lib/format';
-import { detectPlatform, hasRestrictedVoiceList, type Platform } from '@/lib/platform';
-import { SPEECH_RATES, speech, useSpeech } from '@/lib/speech';
+import { speech, useSpeech } from '@/lib/speech';
 import { VoiceSetupHelp } from './VoiceSetupHelp';
 
 export interface SpeechSource {
@@ -13,14 +11,23 @@ export interface SpeechSource {
 }
 
 /**
- * Play, speed, and where you are in the article.
+ * The button that starts listening. Nothing else.
+ *
+ * It used to be a card carrying the title, a progress bar, five speed chips and
+ * a voice select — a panel of controls sitting in the middle of an article,
+ * mostly disabled, for a feature the reader had not asked for yet. Everything
+ * that is only meaningful once audio is playing now lives in {@link SpeechDock},
+ * which appears at the bottom of the screen when it becomes true.
+ *
+ * The split also fixes something the card could not: the dock is mounted by the
+ * layout, so it survives navigation. The queue keeps playing and stays
+ * controllable while the reader moves through the app, instead of losing its
+ * controls the moment the page that drew them unmounted.
  *
  * The script is fetched on the first press rather than with the page: it is a
- * second copy of the story's text, and most readers never listen.
- *
- * Sources are read one after another and fetched as they come up, so the day
- * queue costs one request per story actually reached rather than twenty on
- * arrival.
+ * second copy of the story's text, and most readers never listen. Sources are
+ * read one after another and fetched as they come up, so the day queue costs one
+ * request per story actually reached rather than twenty on arrival.
  */
 export function SpeechPlayer({
   sources,
@@ -43,11 +50,6 @@ export function SpeechPlayer({
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [position, setPosition] = useState(0);
-  const [platform, setPlatform] = useState<Platform>('unknown');
-
-  // Only after hydration; the server has no user agent to read.
-  useEffect(() => setPlatform(detectPlatform()), []);
 
   // Read inside the finished-callback, which is registered once per source and
   // must see the latest list without being re-registered.
@@ -57,7 +59,6 @@ export function SpeechPlayer({
   const mine = state.owner === id;
   const speaking = mine && state.status === 'speaking';
   const paused = mine && state.status === 'paused';
-  const active = speaking || paused;
 
   const start = useCallback(
     async (index: number) => {
@@ -66,7 +67,6 @@ export function SpeechPlayer({
 
       setLoading(true);
       setError(null);
-      setPosition(index);
 
       try {
         const script = await api.speech(list[index].slug);
@@ -74,6 +74,7 @@ export function SpeechPlayer({
         speech.play(script.chunks, {
           title: script.title,
           owner: id,
+          queue: list.length > 1 ? { index: index + 1, total: list.length } : undefined,
           onFinished: () => {
             // Chained here rather than by concatenating every script up front:
             // the reader usually stops after two or three.
@@ -96,11 +97,7 @@ export function SpeechPlayer({
   // Still resolving the voice list — Safari hands it over asynchronously, and
   // offering a play button that would fail is worse than a moment of nothing.
   if (!state.ready) {
-    return (
-      <div className={`card p-4 ${className}`}>
-        <div className="skeleton h-9 w-full" />
-      </div>
-    );
+    return <div className={`skeleton h-9 w-32 rounded-full ${className}`} />;
   }
 
   if (state.turkishVoices.length === 0) {
@@ -123,189 +120,42 @@ export function SpeechPlayer({
     void start(0);
   };
 
-  const progress = active && state.total > 0 ? (state.index + 1) / state.total : 0;
+  const text = label ?? 'Dinle';
 
   return (
-    <section className={`card p-4 ${className}`} aria-label="Sesli okuma">
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={toggle}
-          disabled={loading}
-          aria-label={speaking ? 'Duraklat' : paused ? 'Devam et' : 'Sesli oku'}
-          className="tap-44 flex h-11 w-11 flex-none items-center justify-center rounded-full
-                     bg-focus-600 text-white transition hover:bg-focus-700 active:bg-focus-800
-                     disabled:opacity-60"
-        >
-          {loading ? (
-            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-          ) : speaking ? (
-            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M8 5h3v14H8zM13 5h3v14h-3z" />
-            </svg>
-          ) : (
-            <svg className="h-5 w-5 translate-x-[1px]" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M7 4.5v15l13-7.5z" />
-            </svg>
-          )}
-        </button>
-
-        <div className="min-w-0 flex-1">
-          <p className="font-mono text-[11px] tracking-[0.13em] text-ink-500 dark:text-ink-400">
-            {trUpper(label ?? 'Sesli oku')}
-          </p>
-
-          {active ? (
-            <>
-              <p className="truncate text-[13px] text-ink-700 dark:text-ink-200">{state.title}</p>
-              <div className="mt-1.5 flex items-center gap-2">
-                <div
-                  className="h-1 flex-1 overflow-hidden rounded-full bg-ink-200 dark:bg-ink-800"
-                  role="progressbar"
-                  aria-valuemin={0}
-                  aria-valuemax={state.total}
-                  aria-valuenow={state.index + 1}
-                >
-                  <div
-                    className="h-full bg-focus-600 transition-[width] duration-300 dark:bg-focus-400"
-                    style={{ width: `${progress * 100}%` }}
-                  />
-                </div>
-                <span className="flex-none font-mono text-[11px] text-ink-400 dark:text-ink-500">
-                  {state.index + 1}/{state.total}
-                </span>
-              </div>
-            </>
-          ) : (
-            <p className="truncate text-[13px] text-ink-500 dark:text-ink-400">
-              {sources.length > 1 ? `${sources.length} haber` : sources[0]?.title}
-            </p>
-          )}
-        </div>
-
-        {active && (
-          <button
-            type="button"
-            onClick={() => speech.stop()}
-            aria-label="Durdur"
-            className="tap-44 flex-none rounded-lg p-2 text-ink-400 transition hover:bg-ink-100
-                       hover:text-ink-700 dark:hover:bg-ink-800 dark:hover:text-ink-200"
-          >
-            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <rect x="6" y="6" width="12" height="12" rx="1.5" />
-            </svg>
-          </button>
-        )}
-      </div>
-
-      {error && <p className="mt-2 text-xs text-signal-hype">{error}</p>}
-
-      {/*
-        Speed is shown whether or not anything is playing. Hiding it until
-        playback starts means the reader who wants 1,5× has to listen at 1×
-        first, and it is the setting they came for.
-      */}
-      <div className="chip-row mt-3 flex gap-1.5" role="group" aria-label="Okuma hızı">
-        {SPEECH_RATES.map((rate) => (
-          <button
-            key={rate}
-            type="button"
-            onClick={() => speech.setRate(rate)}
-            aria-pressed={state.rate === rate}
-            className={`tap-row flex-none rounded-lg px-2.5 py-1 font-mono text-[11px] transition ${
-              state.rate === rate
-                ? 'bg-focus-600 text-white'
-                : 'bg-ink-100 text-ink-600 hover:bg-ink-200 dark:bg-ink-800 dark:text-ink-300 dark:hover:bg-ink-700'
-            }`}
-          >
-            {rate.toLocaleString('tr-TR')}×
-          </button>
-        ))}
-      </div>
-
-      {active && (
-        <>
-          <div className="mt-3 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => speech.skip(-1)}
-              disabled={state.index <= 0}
-              aria-label="Önceki cümle"
-              className="tap-row rounded-lg px-2 py-1 font-mono text-[11px] text-ink-500 transition
-                         hover:bg-ink-100 disabled:opacity-30 dark:text-ink-400 dark:hover:bg-ink-800"
-            >
-              ‹ cümle
-            </button>
-            <button
-              type="button"
-              onClick={() => speech.skip(1)}
-              disabled={state.index >= state.total - 1}
-              aria-label="Sonraki cümle"
-              className="tap-row rounded-lg px-2 py-1 font-mono text-[11px] text-ink-500 transition
-                         hover:bg-ink-100 disabled:opacity-30 dark:text-ink-400 dark:hover:bg-ink-800"
-            >
-              cümle ›
-            </button>
-
-            {sources.length > 1 && (
-              <span className="ml-auto font-mono text-[11px] text-ink-400 dark:text-ink-500">
-                {position + 1}. haber
-              </span>
-            )}
-          </div>
-        </>
-      )}
-
-      {/*
-        The voice, whether or not anything is playing. It used to appear only
-        mid-playback, which made it unfindable: the reader who dislikes the voice
-        wants to change it before pressing play, not while it is talking over
-        them.
-
-        With a single voice the name is still shown, flat. Hiding the row
-        entirely was the other half of the problem — a reader who installs a new
-        voice on the device and finds no control at all in the app has no way to
-        tell whether the app ignored it or never saw it.
-      */}
-      <div className="mt-2 flex items-center gap-2">
-        <span className="flex-none font-mono text-[11px] tracking-[0.13em] text-ink-500 dark:text-ink-400">
-          {trUpper('ses')}
-        </span>
-
-        {state.turkishVoices.length > 1 ? (
-          <select
-            value={state.voiceUri ?? ''}
-            onChange={(event) => speech.setVoice(event.target.value)}
-            aria-label="Okuma sesi"
-            className="min-w-0 flex-1 rounded-lg border border-ink-200 bg-white px-2 py-1 text-[13px]
-                       text-ink-700 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-200"
-          >
-            {state.turkishVoices.map((voice) => (
-              <option key={voice.voiceURI} value={voice.voiceURI}>
-                {voice.name}
-              </option>
-            ))}
-          </select>
+    <div className={className}>
+      <button
+        type="button"
+        onClick={toggle}
+        disabled={loading}
+        aria-label={speaking ? 'Duraklat' : paused ? 'Devam et' : `${text} — sesli oku`}
+        className={`tap-44 inline-flex items-center gap-2 rounded-full border px-3.5 py-2 text-[13px]
+                    font-medium transition disabled:opacity-60 ${
+                      speaking || paused
+                        ? 'border-transparent bg-focus-600 text-white hover:bg-focus-700'
+                        : `border-ink-200 bg-white text-ink-700 hover:border-focus-300 hover:text-focus-700
+                           dark:border-ink-700 dark:bg-ink-900 dark:text-ink-200
+                           dark:hover:border-focus-700 dark:hover:text-focus-300`
+                    }`}
+      >
+        {loading ? (
+          <span
+            className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent"
+            aria-hidden="true"
+          />
+        ) : speaking ? (
+          <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M8 5h3v14H8zM13 5h3v14h-3z" />
+          </svg>
         ) : (
-          <span className="min-w-0 flex-1 truncate text-[13px] text-ink-700 dark:text-ink-200">
-            {state.turkishVoices[0]?.name}
-          </span>
+          <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M7 4.5v15l13-7.5z" />
+          </svg>
         )}
-      </div>
+        {text}
+      </button>
 
-      {/*
-        Kept out of the feed, where it would be a permanent apology under a
-        control nobody asked about. On the story page, where a reader who wants a
-        different voice goes looking, it is the answer to the question they are
-        about to ask.
-      */}
-      {!quiet && state.turkishVoices.length === 1 && hasRestrictedVoiceList(platform) && (
-        <p className="mt-1.5 text-[12px] leading-relaxed text-ink-500 dark:text-ink-400">
-          Bu cihazın tarayıcısına tek Türkçe ses açılıyor. Ayarlar'daki Siri sesleri
-          ve indirilebilir yüksek kaliteli sesler web'e kapalı, o yüzden burada
-          seçilemiyorlar.
-        </p>
-      )}
-    </section>
+      {error && <p className="mt-1.5 text-xs text-signal-hype">{error}</p>}
+    </div>
   );
 }

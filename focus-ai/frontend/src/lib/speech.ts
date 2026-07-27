@@ -36,6 +36,16 @@ export interface SpeechSnapshot {
   /** What is being read, so the caller can label the player. */
   title: string | null;
   /**
+   * Where this story sits in the queue that was started, 1-based, and how long
+   * that queue is. Both 0 for a single story.
+   *
+   * Held here rather than in the player because the dock outlives it: the queue
+   * keeps playing while the reader browses, and by then the component that knows
+   * about the list has been unmounted by the router.
+   */
+  queueIndex: number;
+  queueTotal: number;
+  /**
    * Which player started this. There is one engine and more than one player on
    * screen — the story's own and the day queue — so each has to be able to ask
    * "is that me speaking" before it renders itself as playing.
@@ -85,6 +95,8 @@ class SpeechController {
   private chunks: SpeechChunk[] = [];
   private title: string | null = null;
   private owner: string | null = null;
+  private queueIndex = 0;
+  private queueTotal = 0;
   private index = -1;
   private status: SpeechStatus = 'idle';
   private rate = 1;
@@ -144,6 +156,8 @@ class SpeechController {
       supported: this.supported,
       title: this.title,
       owner: this.owner,
+      queueIndex: this.queueIndex,
+      queueTotal: this.queueTotal,
     };
 
     return this.snapshot;
@@ -189,7 +203,12 @@ class SpeechController {
    */
   play(
     chunks: SpeechChunk[],
-    options: { title?: string; owner?: string; onFinished?: () => void } = {},
+    options: {
+      title?: string;
+      owner?: string;
+      onFinished?: () => void;
+      queue?: { index: number; total: number };
+    } = {},
   ): void {
     if (!this.supported || chunks.length === 0) return;
 
@@ -198,6 +217,8 @@ class SpeechController {
     this.title = options.title ?? null;
     this.owner = options.owner ?? null;
     this.onFinished = options.onFinished ?? null;
+    this.queueIndex = options.queue?.index ?? 0;
+    this.queueTotal = options.queue?.total ?? 0;
     this.speakFrom(0);
   }
 
@@ -240,6 +261,8 @@ class SpeechController {
     this.title = null;
     this.owner = null;
     this.onFinished = null;
+    this.queueIndex = 0;
+    this.queueTotal = 0;
     this.emit();
   }
 
@@ -398,6 +421,8 @@ const SERVER_SNAPSHOT: SpeechSnapshot = {
   supported: false,
   title: null,
   owner: null,
+  queueIndex: 0,
+  queueTotal: 0,
 };
 
 export const speech = new SpeechController();

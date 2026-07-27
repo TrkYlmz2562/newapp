@@ -90,6 +90,29 @@
   }
 
   /*
+   * The now-playing island arriving.
+   *
+   * It appears over content the reader is already looking at, so it rises into
+   * place instead of blinking into existence — the movement is what says "this
+   * came from the button you just pressed" rather than "the page changed". The
+   * reduced-motion rule in the base layer flattens it to nothing.
+   */
+  @keyframes dock-in {
+    from {
+      opacity: 0;
+      transform: translateY(0.75rem) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  .dock-in {
+    animation: dock-in 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /*
    * Grows a control's touch target without growing the control.
    *
    * Several controls were well under the 44px minimum — 28px icon buttons, a
