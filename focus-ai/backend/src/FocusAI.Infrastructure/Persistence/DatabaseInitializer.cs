@@ -33,8 +33,73 @@ public sealed class DatabaseInitializer(
         await SeedTopicsAsync(cancellationToken);
         await SeedSourcesAsync(cancellationToken);
         await SeedBadgesAsync(cancellationToken);
+        await RepairStorySlugsAsync(cancellationToken);
 
         await db.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Lowercases story slugs minted before the normaliser learned about 'İ'.
+    /// </summary>
+    /// <remarks>
+    /// Those slugs carry a bare capital 'I' where a dotted capital I stood in the
+    /// headline, and the detail and speech lookups both lowercase the slug they are
+    /// handed before matching — so an affected story returned 404 for its own URL,
+    /// from every link that ever pointed at it.
+    ///
+    /// The stored value is lowercased rather than re-slugged from the title, and
+    /// that is the point: a reader's existing link lowercases to exactly this, so
+    /// the links already in the wild start resolving instead of being replaced by
+    /// new ones. Re-slugging would fix the story and break the link.
+    ///
+    /// Idempotent, and a no-op on every start after the first.
+    /// </remarks>
+    private async Task RepairStorySlugsAsync(CancellationToken cancellationToken)
+    {
+        if (!db.Database.IsRelational())
+        {
+            return;
+        }
+
+        var broken = await db.Stories
+            .Where(s => s.Slug != s.Slug.ToLower())
+            .ToListAsync(cancellationToken);
+
+        if (broken.Count == 0)
+        {
+            return;
+        }
+
+        // Slug is unique-indexed. A lowered value that already belongs to another
+        // story has to be left alone rather than take the index down on startup.
+        var brokenIds = broken.Select(s => s.Id).ToList();
+        var taken = (await db.Stories
+                .Where(s => !brokenIds.Contains(s.Id))
+                .Select(s => s.Slug)
+                .ToListAsync(cancellationToken))
+            .ToHashSet(StringComparer.Ordinal);
+
+        var repaired = 0;
+
+        foreach (var story in broken)
+        {
+            var lowered = story.Slug.ToLowerInvariant();
+
+            if (!taken.Add(lowered))
+            {
+                logger.LogWarning(
+                    "FocusAI left story slug {Slug} as it is: {Lowered} is already taken", story.Slug, lowered);
+                continue;
+            }
+
+            story.Slug = lowered;
+            repaired++;
+        }
+
+        if (repaired > 0)
+        {
+            logger.LogInformation("FocusAI lowercased {Count} unreachable story slugs", repaired);
+        }
     }
 
     private async Task SeedTopicsAsync(CancellationToken cancellationToken)

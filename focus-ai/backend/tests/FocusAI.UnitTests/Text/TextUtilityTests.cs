@@ -10,8 +10,30 @@ public class TextNormalizerTests
     [InlineData("  .NET   9   Released  ", "net 9 released")]
     [InlineData("Açık Kaynak Güncelleme", "acik kaynak guncelleme")]
     [InlineData("Straße", "strase")]
+    [InlineData("Dil Modelleri İçin", "dil modelleri icin")]
+    [InlineData("İSTANBUL", "istanbul")]
     public void Normalize_strips_case_diacritics_and_punctuation(string input, string expected) =>
         Assert.Equal(expected, TextNormalizer.Normalize(input));
+
+    [Fact]
+    public void Normalize_leaves_nothing_uppercase_behind()
+    {
+        // ToLowerInvariant does not touch 'İ' (U+0130), and FormD then splits it
+        // into 'I' + combining dot. Strip the dot as a diacritic and a capital 'I'
+        // walks out of a method that promises lowercase.
+        var normalized = TextNormalizer.Normalize("VIGOR: Dil Modelleri İçin Varyans Odaklı Çıkarım");
+
+        Assert.Equal(normalized.ToLowerInvariant(), normalized);
+        Assert.DoesNotContain('I', normalized);
+    }
+
+    [Fact]
+    public void Turkish_stop_words_are_written_the_way_normalisation_leaves_them()
+    {
+        // "için" could never match a normalised token — the cedilla is gone by the
+        // time the list is consulted — so the entry sat in the list doing nothing.
+        Assert.DoesNotContain("icin", TextNormalizer.Tokenize("Yeni model Türkçe için eğitildi"));
+    }
 
     [Fact]
     public void Normalize_handles_null_and_whitespace() =>
@@ -130,6 +152,37 @@ public class SluggerTests
     [Fact]
     public void Slug_is_url_safe_and_lowercase() =>
         Assert.Equal("gpt-6-yayinlandi", Slugger.Slugify("GPT-6 Yayınlandı!"));
+
+    [Fact]
+    public void Turkish_dotted_capital_i_does_not_leave_an_uppercase_letter_in_the_slug()
+    {
+        // The bug this guards: "…-modelleri-Icin-varyans-…". Slug lookups lowercase
+        // the slug they are given before matching, so a stored slug carrying a
+        // capital letter can never be found — the story 404s on its own URL, for
+        // every link that points at it, forever.
+        var slug = Slugger.Slugify("VIGOR: Dil Modelleri İçin Varyans Odaklı Çıkarım Tahsis Yöntemi");
+
+        Assert.Equal("vigor-dil-modelleri-icin-varyans-odakli-cikarim-tahsis-yontemi", slug);
+        Assert.Equal(slug.ToLowerInvariant(), slug);
+    }
+
+    [Fact]
+    public void Every_slug_survives_being_lowercased_by_the_lookup()
+    {
+        string[] headlines =
+        [
+            "İnternet Altyapısı Değişiyor",
+            "TÜRKİYE'DE YAPAY ZEKÂ",
+            "Şirket İçin Yeni Ürün",
+            "Iğdır'da Çığır Açan Buluş"
+        ];
+
+        foreach (var headline in headlines)
+        {
+            var slug = Slugger.SlugifyUnique(headline, Guid.CreateVersion7());
+            Assert.Equal(slug.ToLowerInvariant(), slug);
+        }
+    }
 
     [Fact]
     public void Long_titles_are_cut_on_a_word_boundary()

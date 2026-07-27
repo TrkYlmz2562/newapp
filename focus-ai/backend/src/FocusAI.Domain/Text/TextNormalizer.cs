@@ -10,11 +10,17 @@ namespace FocusAI.Domain.Text;
 /// </summary>
 public static class TextNormalizer
 {
+    /// <remarks>
+    /// Entries are matched against already-normalised tokens, so they have to be
+    /// written the way <see cref="Normalize"/> leaves them — "icin", not "için".
+    /// The diacritic form could never fire: by the time the list is consulted the
+    /// cedilla is gone.
+    /// </remarks>
     private static readonly HashSet<string> NoiseTokens = new(StringComparer.Ordinal)
     {
         "the", "a", "an", "and", "or", "for", "to", "of", "in", "on", "with", "is",
         "are", "be", "as", "at", "by", "from", "that", "this", "it", "its",
-        "ve", "ile", "bir", "bu", "de", "da", "için", "olarak"
+        "ve", "ile", "bir", "bu", "de", "da", "icin", "olarak"
     };
 
     /// <summary>
@@ -99,6 +105,20 @@ public static class TextNormalizer
     /// 'i' to the same character is intentional: it makes Turkish titles that
     /// differ only in dotted-i collide, which is what de-duplication wants.
     /// </summary>
+    /// <remarks>
+    /// The <c>ToLowerInvariant</c> fallback is load-bearing, not defensive tidying.
+    /// <c>ToLowerInvariant</c> leaves 'İ' (U+0130) untouched — the same trap
+    /// CommitmentLexicon.Fold and VisualSubject.FoldCase spell out by hand — so it
+    /// arrives here having survived the lowercase pass, and FormD has by then split
+    /// it into 'I' + combining dot. The dot is dropped as a diacritic and a bare
+    /// capital 'I' is left standing in a string this method promises is lowercase.
+    ///
+    /// That is how "VIGOR: Dil Modelleri İçin …" was slugged
+    /// "…-modelleri-Icin-varyans-…", and, because the detail lookup lowercases the
+    /// slug it is given before matching, how the story answered 404 to its own URL
+    /// — permanently, and only ever for Turkish headlines carrying a dotted capital
+    /// I.
+    /// </remarks>
     private static char MapSpecialLetter(char ch) => ch switch
     {
         'ı' => 'i',
@@ -109,6 +129,6 @@ public static class TextNormalizer
         'ß' => 's',
         'đ' => 'd',
         'ł' => 'l',
-        _ => ch
+        _ => char.ToLowerInvariant(ch)
     };
 }
