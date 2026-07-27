@@ -99,6 +99,22 @@ const MAX_RATE = 2.5;
 const KEEP_ALIVE_MS = 10_000;
 
 /**
+ * How long silence is allowed to last before the device voice takes over.
+ *
+ * Pressing play and hearing nothing is the worst state this feature has, and it
+ * is not hypothetical: the server may be waiting on a rendering that is slow, or
+ * on a refusal that has not arrived yet, and until it answers there is nothing to
+ * play and no error to react to. The browser will wait as long as the server
+ * does, which is far longer than anyone holds a phone to their ear wondering
+ * whether they pressed the button.
+ *
+ * So the wait is bounded here rather than left to the network. Eight seconds is
+ * long enough for a cached rendering to arrive over a slow connection and short
+ * enough that the reader reads it as loading rather than as broken.
+ */
+const AUDIO_START_TIMEOUT_MS = 8_000;
+
+/**
  * Speed and voice are remembered on the device, not on the account.
  *
  * They describe the hardware you are listening on, not who you are: the rate
@@ -155,6 +171,7 @@ class SpeechController {
 
   private readonly listeners = new Set<() => void>();
   private keepAlive: ReturnType<typeof setInterval> | null = null;
+  private stallTimer: ReturnType<typeof setTimeout> | null = null;
   private snapshot: SpeechSnapshot | null = null;
 
   /**
@@ -355,13 +372,38 @@ class SpeechController {
     audio.playbackRate = this.rate;
     audio.currentTime = 0;
 
+    // Bounded silence. Cleared by the element's own `playing` event, so a
+    // rendering that arrives in time never trips it.
+    this.stopStallTimer();
+    this.stallTimer = setTimeout(() => {
+      if (generation !== this.generation || this.engine !== 'audio') return;
+      this.fallBackToDevice();
+    }, AUDIO_START_TIMEOUT_MS);
+
     void audio.play().catch(() => {
       if (generation !== this.generation) return;
       this.fallBackToDevice();
     });
   }
 
+  private stopStallTimer(): void {
+    if (this.stallTimer === null) return;
+
+    clearTimeout(this.stallTimer);
+    this.stallTimer = null;
+  }
+
   private fallBackToDevice(): void {
+    this.stopStallTimer();
+
+    if (this.audio) {
+      // Stop the rendering arriving late and starting to talk over the voice that
+      // replaced it.
+      this.audio.pause();
+      this.audio.removeAttribute('src');
+      this.audio.load();
+    }
+
     if (!this.deviceSupported || this.chunks.length === 0) {
       this.status = 'idle';
       this.emit();
@@ -378,6 +420,8 @@ class SpeechController {
     const audio = new Audio();
     audio.preload = 'auto';
 
+    // Sound is actually coming out, so the silence budget is spent well.
+    audio.addEventListener('playing', () => this.stopStallTimer());
     audio.addEventListener('timeupdate', () => this.emit());
     audio.addEventListener('loadedmetadata', () => {
       this.emit();
@@ -483,6 +527,7 @@ class SpeechController {
 
   stop(): void {
     this.generation++;
+    this.stopStallTimer();
 
     if (this.audio) {
       this.audio.pause();

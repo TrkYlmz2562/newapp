@@ -45,7 +45,16 @@ public sealed class GeminiSpeechSynthesizer(
         "Vindemiatrix", "Sadachbia", "Sadaltager", "Sulafat"
     ];
 
+    /// <summary>
+    /// When the provider last said no, as UTC ticks. Static because the refusal is
+    /// about the account, not about this request or this scope.
+    /// </summary>
+    private static long _quotaSpentUntil;
+
     private SpeechOptions Options => options.Value;
+
+    /// <summary>True while a recent 429 is still worth respecting.</summary>
+    private static bool InCooldown => Interlocked.Read(ref _quotaSpentUntil) > DateTime.UtcNow.Ticks;
 
     public bool IsEnabled => Options.Enabled && !string.IsNullOrWhiteSpace(Options.ApiKey);
 
@@ -62,6 +71,14 @@ public sealed class GeminiSpeechSynthesizer(
         CancellationToken cancellationToken = default)
     {
         if (!IsEnabled || string.IsNullOrWhiteSpace(text))
+        {
+            return null;
+        }
+
+        // The allowance was spent a moment ago and nothing since then can have
+        // refilled it. Asking again would buy the reader another wait for the same
+        // refusal — the queue behind this story would pay it once each.
+        if (InCooldown)
         {
             return null;
         }
@@ -104,16 +121,23 @@ public sealed class GeminiSpeechSynthesizer(
 
             if (!response.IsSuccessStatusCode)
             {
-                // 429 is the expected end of a free day rather than a fault, so it
-                // is said plainly instead of as an error with a stack trace.
-                var level = response.StatusCode == HttpStatusCode.TooManyRequests
-                    ? LogLevel.Information
-                    : LogLevel.Warning;
+                if (response.StatusCode == HttpStatusCode.TooManyRequests)
+                {
+                    var cooldown = TimeSpan.FromSeconds(Math.Clamp(Options.QuotaCooldownSeconds, 5, 3600));
+                    Interlocked.Exchange(ref _quotaSpentUntil, DateTime.UtcNow.Add(cooldown).Ticks);
 
-                logger.Log(
-                    level,
-                    "FocusAI speech synthesis returned {Status}; falling back to the device voice",
-                    (int)response.StatusCode);
+                    // The expected end of a free day rather than a fault, so it is
+                    // said plainly instead of as an error with a stack trace.
+                    logger.LogInformation(
+                        "FocusAI speech quota is spent; using the device voice for the next {Seconds}s",
+                        (int)cooldown.TotalSeconds);
+                }
+                else
+                {
+                    logger.LogWarning(
+                        "FocusAI speech synthesis returned {Status}; falling back to the device voice",
+                        (int)response.StatusCode);
+                }
 
                 return null;
             }

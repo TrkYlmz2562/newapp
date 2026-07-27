@@ -178,7 +178,29 @@ public sealed class SpeechOptions
     /// </summary>
     public int MaxCharacters { get; set; } = 6_000;
 
-    public int TimeoutSeconds { get; set; } = 180;
+    /// <summary>
+    /// How long to wait for a rendering before giving up on it.
+    /// </summary>
+    /// <remarks>
+    /// Was three minutes, which is not patience but a hang: the reader presses
+    /// play, hears nothing at all, and the device voice only arrives once the
+    /// whole timeout has run out. A couple of minutes of speech renders in well
+    /// under this, so anything slower is a request that is not coming back — and
+    /// waiting for it costs the listen either way.
+    /// </remarks>
+    public int TimeoutSeconds { get; set; } = 45;
+
+    /// <summary>
+    /// How long to stop asking after the provider says the allowance is spent.
+    /// </summary>
+    /// <remarks>
+    /// A 429 is not about this story, it is about the minute or the day — so the
+    /// next story will get one too, and the one after that. Without a pause the
+    /// day's queue pays the full wait once per story before falling back each
+    /// time. Remembering the refusal for a couple of minutes turns that into one
+    /// slow story followed by seven instant ones.
+    /// </remarks>
+    public int QuotaCooldownSeconds { get; set; } = 120;
 
     /// <summary>
     /// Where rendered readings are kept. Relative paths resolve against the content
