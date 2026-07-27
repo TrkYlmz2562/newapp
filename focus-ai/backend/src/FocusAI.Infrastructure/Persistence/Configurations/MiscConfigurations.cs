@@ -1,3 +1,4 @@
+using FocusAI.Domain.Common;
 using FocusAI.Domain.Entities.Ai;
 using FocusAI.Domain.Entities.Digests;
 using FocusAI.Domain.Entities.Gamification;
@@ -89,6 +90,64 @@ public class LearningResourceConfiguration : IEntityTypeConfiguration<LearningRe
         builder.Property(x => x.Title).HasMaxLength(300).IsRequired();
         builder.Property(x => x.Url).HasMaxLength(2000).IsRequired();
         builder.Property(x => x.Kind).HasMaxLength(30);
+    }
+}
+
+public class LearningBriefConfiguration : IEntityTypeConfiguration<LearningBrief>
+{
+    public void Configure(EntityTypeBuilder<LearningBrief> builder)
+    {
+        builder.ToTable("learning_briefs");
+        builder.HasKey(x => x.Id);
+
+        // The list is read newest-first, filtered to one reader.
+        builder.HasIndex(x => new { x.UserId, x.CreatedAt });
+
+        builder.Property(x => x.Title).HasMaxLength(500).IsRequired();
+        builder.Property(x => x.LearningGoal).HasMaxLength(500);
+        builder.Property(x => x.DemoIdea).HasMaxLength(500);
+        builder.Property(x => x.Provider).HasMaxLength(FieldLimits.ProviderName);
+        builder.Property(x => x.Model).HasMaxLength(FieldLimits.ModelName);
+
+        // No length cap on the prompt: it grows with the number of sources a story
+        // gathered, and truncating it would cut the case file mid-quote — the one
+        // part of the brief that has to survive intact.
+        builder.Property(x => x.Prompt);
+
+        builder.HasOne(x => x.User)
+            .WithMany()
+            .HasForeignKey(x => x.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Deleting the day's suggestion must not take the lesson with it.
+        builder.HasOne(x => x.LearningSuggestion)
+            .WithMany()
+            .HasForeignKey(x => x.LearningSuggestionId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasMany(x => x.Stories)
+            .WithOne(x => x.LearningBrief)
+            .HasForeignKey(x => x.LearningBriefId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public class LearningBriefStoryConfiguration : IEntityTypeConfiguration<LearningBriefStory>
+{
+    public void Configure(EntityTypeBuilder<LearningBriefStory> builder)
+    {
+        builder.ToTable("learning_brief_stories");
+        builder.HasKey(x => x.Id);
+        builder.HasIndex(x => new { x.LearningBriefId, x.StoryId }).IsUnique();
+
+        // Finding "do I already have a lesson queued for this story" is the check
+        // that runs on every press of the button.
+        builder.HasIndex(x => x.StoryId);
+
+        builder.HasOne(x => x.Story)
+            .WithMany()
+            .HasForeignKey(x => x.StoryId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }
 

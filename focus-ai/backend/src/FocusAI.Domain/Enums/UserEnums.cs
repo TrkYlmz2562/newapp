@@ -58,3 +58,25 @@ public enum LearningStatus
     Completed = 2,
     Skipped = 3
 }
+
+/// <summary>
+/// Lifecycle of a learning brief. The split between the first two states is the
+/// cost boundary: queueing is free, generating spends a model call.
+/// </summary>
+public enum BriefStatus
+{
+    /// <summary>Reader asked to learn this. Nothing generated yet.</summary>
+    Queued = 0,
+
+    /// <summary>Prompt produced and stored, ready to copy.</summary>
+    Generated = 1,
+
+    /// <summary>Reader finished the lesson.</summary>
+    Done = 2
+}
+
+public enum BriefOrigin
+{
+    Story = 0,
+    DailySuggestion = 1
+}

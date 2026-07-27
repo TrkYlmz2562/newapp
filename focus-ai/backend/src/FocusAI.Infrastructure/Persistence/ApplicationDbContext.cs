@@ -67,6 +67,10 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
     public DbSet<LearningResource> LearningResources => Set<LearningResource>();
 
+    public DbSet<LearningBrief> LearningBriefs => Set<LearningBrief>();
+
+    public DbSet<LearningBriefStory> LearningBriefStories => Set<LearningBriefStory>();
+
     public DbSet<TrendSnapshot> TrendSnapshots => Set<TrendSnapshot>();
 
     public DbSet<UserStreak> UserStreaks => Set<UserStreak>();

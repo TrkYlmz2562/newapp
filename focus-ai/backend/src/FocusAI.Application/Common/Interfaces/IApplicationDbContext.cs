@@ -66,6 +66,10 @@ public interface IApplicationDbContext
 
     DbSet<LearningResource> LearningResources { get; }
 
+    DbSet<LearningBrief> LearningBriefs { get; }
+
+    DbSet<LearningBriefStory> LearningBriefStories { get; }
+
     DbSet<TrendSnapshot> TrendSnapshots { get; }
 
     DbSet<UserStreak> UserStreaks { get; }
