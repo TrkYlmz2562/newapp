@@ -4,6 +4,7 @@ import { useCallback, useId, useRef, useState } from 'react';
 import { api, describeError } from '@/lib/api';
 import { trUpper } from '@/lib/format';
 import { SPEECH_RATES, speech, useSpeech } from '@/lib/speech';
+import { VoiceSetupHelp } from './VoiceSetupHelp';
 
 export interface SpeechSource {
   slug: string;
@@ -91,17 +92,7 @@ export function SpeechPlayer({
   }
 
   if (state.turkishVoices.length === 0) {
-    return (
-      <div className={`card p-4 ${className}`}>
-        <p className="font-mono text-[11px] tracking-[0.13em] text-ink-500 dark:text-ink-400">
-          {trUpper('Sesli okuma')}
-        </p>
-        <p className="mt-1.5 text-[13px] leading-relaxed text-ink-600 dark:text-ink-300">
-          Bu cihazda Türkçe ses yok. Türkçe metni İngilizce sesle okutmak anlaşılmaz
-          çıktı verdiği için oynatmayı kapattım.
-        </p>
-      </div>
-    );
+    return <VoiceSetupHelp className={className} />;
   }
 
   const toggle = () => {

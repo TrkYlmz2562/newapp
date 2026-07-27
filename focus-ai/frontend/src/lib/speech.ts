@@ -286,6 +286,17 @@ class SpeechController {
     this.keepAlive = null;
   }
 
+  /**
+   * Re-asks the device for its voices. A voice installed while the page was open
+   * does not announce itself, so the reader who just downloaded Turkish needs a
+   * way to say "look again" that is not a page reload.
+   */
+  refreshVoices(): void {
+    this.ready = false;
+    this.emit();
+    this.loadVoices();
+  }
+
   private loadVoices(): void {
     if (!this.supported) return;
 
