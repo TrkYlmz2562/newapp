@@ -35,6 +35,12 @@ export interface SpeechSnapshot {
   supported: boolean;
   /** What is being read, so the caller can label the player. */
   title: string | null;
+  /**
+   * Which player started this. There is one engine and more than one player on
+   * screen — the story's own and the day queue — so each has to be able to ask
+   * "is that me speaking" before it renders itself as playing.
+   */
+  owner: string | null;
 }
 
 export const SPEECH_RATES = [0.75, 1, 1.25, 1.5, 2] as const;
@@ -52,6 +58,7 @@ function isTurkish(voice: SpeechSynthesisVoice): boolean {
 class SpeechController {
   private chunks: SpeechChunk[] = [];
   private title: string | null = null;
+  private owner: string | null = null;
   private index = -1;
   private status: SpeechStatus = 'idle';
   private rate = 1;
@@ -101,6 +108,7 @@ class SpeechController {
       ready: this.ready,
       supported: this.supported,
       title: this.title,
+      owner: this.owner,
     };
 
     return this.snapshot;
@@ -142,12 +150,16 @@ class SpeechController {
    * Loads a script and starts reading. Must be called from a user gesture — iOS
    * refuses to start speech otherwise, and silently.
    */
-  play(chunks: SpeechChunk[], options: { title?: string; onFinished?: () => void } = {}): void {
+  play(
+    chunks: SpeechChunk[],
+    options: { title?: string; owner?: string; onFinished?: () => void } = {},
+  ): void {
     if (!this.supported || chunks.length === 0) return;
 
     this.loadVoices();
     this.chunks = chunks;
     this.title = options.title ?? null;
+    this.owner = options.owner ?? null;
     this.onFinished = options.onFinished ?? null;
     this.speakFrom(0);
   }
@@ -189,6 +201,7 @@ class SpeechController {
     this.index = -1;
     this.chunks = [];
     this.title = null;
+    this.owner = null;
     this.onFinished = null;
     this.emit();
   }
@@ -329,6 +342,7 @@ const SERVER_SNAPSHOT: SpeechSnapshot = {
   ready: false,
   supported: false,
   title: null,
+  owner: null,
 };
 
 export const speech = new SpeechController();
