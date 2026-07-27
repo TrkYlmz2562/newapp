@@ -23,7 +23,12 @@ namespace FocusAI.Application.Features.Stories;
 /// it to produce a count would cost a full ranking pass to answer a footnote —
 /// and would then report a smaller feed than Keşfet visibly contains.
 /// </remarks>
-public sealed record GetUnreadCountQuery : IRequest<UnreadCountDto>;
+/// <param name="Category">
+/// Narrows the tally to one category, so Keşfet can answer for the tab actually
+/// on screen rather than for a feed the reader is not looking at. Null counts
+/// everything, which is what Home wants.
+/// </param>
+public sealed record GetUnreadCountQuery(ContentCategory? Category = null) : IRequest<UnreadCountDto>;
 
 public sealed class GetUnreadCountQueryHandler(
     IApplicationDbContext db,
@@ -42,6 +47,11 @@ public sealed class GetUnreadCountQueryHandler(
             .AsNoTracking()
             .Where(s => s.Status == StoryStatus.Published)
             .Where(StoryFilters.VisibleToReaders);
+
+        if (request.Category is { } category)
+        {
+            feed = feed.Where(s => s.Category == category);
+        }
 
         var total = await feed.CountAsync(cancellationToken);
 

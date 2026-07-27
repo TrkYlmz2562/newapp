@@ -50,8 +50,11 @@ public static class StoryEndpoints
 
         // Ahead of "/{slug}" for the reader's benefit, not the router's — a literal
         // segment outscores a parameter one wherever it is declared.
-        group.MapGet("/unread-count", async (ISender sender, CancellationToken ct) =>
-                Results.Ok(await sender.Send(new GetUnreadCountQuery(), ct)))
+        group.MapGet("/unread-count", async (
+                [FromQuery] ContentCategory? category,
+                ISender sender,
+                CancellationToken ct) =>
+                Results.Ok(await sender.Send(new GetUnreadCountQuery(category), ct)))
             .WithSummary("Feed'de kaç haber açılmamış.")
             .Produces<UnreadCountDto>()
             .RequireAuthorization();

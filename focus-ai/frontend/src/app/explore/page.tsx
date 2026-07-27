@@ -6,7 +6,7 @@ import { PageHeader, EmptyState, ErrorState } from '@/components/Shell';
 import { StoryCard, StoryCardSkeleton } from '@/components/StoryCard';
 import { api } from '@/lib/api';
 import { CATEGORY_EMOJI, CATEGORY_LABELS } from '@/lib/format';
-import type { ContentCategory, StoryCard as Story } from '@/lib/types';
+import type { ContentCategory, StoryCard as Story, UnreadCount } from '@/lib/types';
 
 const CATEGORIES: ContentCategory[] = [
   'Ai',
@@ -33,6 +33,7 @@ function ExploreContent() {
   const [stories, setStories] = useState<Story[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
+  const [unread, setUnread] = useState<UnreadCount | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,6 +52,15 @@ function ExploreContent() {
         setStories((current) => (replace ? result.items : [...current, ...result.items]));
         setHasMore(result.hasNextPage);
         setPage(result.page);
+
+        // Only on the first page: the tally describes the category, not the
+        // scroll, so re-counting it on every "daha fazla" would spend a query to
+        // print the same number. Failure is silent — a missing footnote must not
+        // turn a working feed into an error state, and a signed-out reader has no
+        // read history for it to count against.
+        if (replace) {
+          setUnread(await api.stories.unreadCount(active ?? undefined).catch(() => null));
+        }
       } catch {
         setError('Haberler yüklenemedi.');
       } finally {
@@ -130,6 +140,27 @@ function ExploreContent() {
           <button type="button" onClick={() => load(page + 1, false)} className="btn-ghost w-full">
             Daha fazla göster
           </button>
+        )}
+
+        {/* Scoped to the tab on screen: on Keşfet the reader has picked a
+            category, so "everything you have not read" would be answering about
+            a feed they are not looking at. */}
+        {unread && (
+          <p className="pb-2 text-center text-[13px] text-ink-500 dark:text-ink-400">
+            {unread.unread > 0 ? (
+              <>
+                <strong className="font-semibold text-ink-700 dark:text-ink-200">
+                  {unread.unread.toLocaleString('tr-TR')}
+                </strong>{' '}
+                okunmamış{' '}
+                <span className="text-ink-400 dark:text-ink-500">
+                  ({unread.total.toLocaleString('tr-TR')} haberin içinde)
+                </span>
+              </>
+            ) : (
+              'Burada okunmamış haber kalmadı.'
+            )}
+          </p>
         )}
       </div>
     </div>

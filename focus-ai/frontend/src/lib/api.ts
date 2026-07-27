@@ -16,6 +16,7 @@ import type {
   StoryCard,
   StoryDetail,
   StorySpeech,
+  ContentCategory,
   Topic,
   Trend,
   UnreadCount,
@@ -233,8 +234,12 @@ export const api = {
 
     top: (withinHours = 24) => request<StoryCard | undefined>(`/api/stories/top${qs({ withinHours })}`),
 
-    /** How much of the feed is still unopened. Signed-in readers only. */
-    unreadCount: () => request<UnreadCount>('/api/stories/unread-count'),
+    /**
+     * How much of the feed is still unopened. Signed-in readers only.
+     * `category` narrows it to one Keşfet tab; omit it for the whole feed.
+     */
+    unreadCount: (category?: ContentCategory) =>
+      request<UnreadCount>(`/api/stories/unread-count${qs({ category })}`),
 
     detail: (slug: string, token?: string) =>
       request<StoryDetail>(`/api/stories/${encodeURIComponent(slug)}`, { token }),
