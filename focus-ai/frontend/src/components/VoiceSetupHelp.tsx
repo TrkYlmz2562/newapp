@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { speech } from '@/lib/speech';
+import { speech, useSpeech } from '@/lib/speech';
 import { trUpper } from '@/lib/format';
 import { detectPlatform, hasRestrictedVoiceList, type Platform } from '@/lib/platform';
 
@@ -40,6 +40,23 @@ const STEPS: Record<Platform, { label: string; path: string[] }> = {
     path: ['Sistem ayarları', 'Erişilebilirlik veya Dil', 'Metin okuma / Sözlü içerik', 'Türkçe ses ekle'],
   },
 };
+
+/**
+ * The same panel, but it decides for itself whether it is needed.
+ *
+ * For pages whose play control is the round button, which is glyph-only and has
+ * no room to explain itself. The button renders nothing when the device has no
+ * Turkish voice, so without this the feature would simply be missing with no
+ * account of why — this puts the account back, at full width, further down the
+ * page where there is space for it.
+ */
+export function VoiceSetupNotice({ className = '' }: { className?: string }) {
+  const state = useSpeech();
+
+  if (!state.supported || !state.ready || state.turkishVoices.length > 0) return null;
+
+  return <VoiceSetupHelp className={className} />;
+}
 
 export function VoiceSetupHelp({ className = '' }: { className?: string }) {
   const [platform, setPlatform] = useState<Platform>('unknown');

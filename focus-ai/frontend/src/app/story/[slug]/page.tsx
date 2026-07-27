@@ -12,6 +12,7 @@ import { FeedbackButtons } from '@/components/FeedbackButtons';
 import { LearnButton } from '@/components/LearnButton';
 import { ShareButton } from '@/components/ShareButton';
 import { SpeechPlayer } from '@/components/SpeechPlayer';
+import { VoiceSetupNotice } from '@/components/VoiceSetupHelp';
 import { StoryTimeline } from '@/components/StoryTimeline';
 import { StoryVisual } from '@/components/StoryVisual';
 import { TrustPanel } from '@/components/TrustBadge';
@@ -29,7 +30,7 @@ import {
   timeAgo,
   trUpper,
 } from '@/lib/format';
-import type { StoryDetail } from '@/lib/types';
+import type { StoryDetail, StoryFeedback } from '@/lib/types';
 
 /** Below this the model told us not to trust its own analysis, so we hide it. */
 const MIN_ANALYSIS_CONFIDENCE = 0.35;
@@ -41,6 +42,9 @@ export default function StoryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  // Owned here, not by the buttons: the row appears twice and the two copies
+  // have to agree. See the note on FeedbackButtons' `value`.
+  const [feedback, setFeedback] = useState<StoryFeedback | null>(null);
   const openedAt = useRef<number>(Date.now());
 
   useEffect(() => {
@@ -56,6 +60,7 @@ export default function StoryPage() {
 
         setStory(result);
         setSaved(result.isBookmarked);
+        setFeedback(result.feedback ?? null);
         openedAt.current = Date.now();
 
         if (user) {
@@ -147,59 +152,52 @@ export default function StoryPage() {
         >
           ← Geri
         </Link>
-        <div className="flex items-center gap-2">
-          <FeedbackButtons storyId={story.id} initial={story.feedback} surface="detail" />
-          <ShareButton story={story} />
-          {user && (
-            <button
-              type="button"
-              onClick={toggleSave}
-              aria-pressed={saved}
-              aria-label={saved ? 'Kayıtlardan çıkar' : 'Kaydet'}
-              title={saved ? 'Kayıtlardan çıkar' : 'Kaydet'}
-              className={`tap-44 rounded-lg p-2 transition hover:bg-ink-100 dark:hover:bg-ink-800 ${
-                saved ? 'text-focus-600 dark:text-focus-400' : 'text-ink-500 dark:text-ink-400'
-              }`}
-            >
-              <svg
-                className="h-5 w-5"
-                viewBox="0 0 24 24"
-                fill={saved ? 'currentColor' : 'none'}
-                stroke="currentColor"
-                strokeWidth={1.8}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M6 4h12v17l-6-4-6 4z" />
-              </svg>
-            </button>
-          )}
-        </div>
+        <StoryActions
+          story={story}
+          canSave={Boolean(user)}
+          saved={saved}
+          onToggleSave={toggleSave}
+          feedback={feedback}
+          onFeedback={setFeedback}
+        />
       </nav>
 
-      <header className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2 text-xs text-ink-500 dark:text-ink-400">
-          <span className="chip bg-ink-100 text-ink-600 dark:bg-ink-800 dark:text-ink-300">
-            {CATEGORY_EMOJI[story.category]} {CATEGORY_LABELS[story.category]}
-          </span>
-          <time dateTime={story.publishedAt}>{formatDate(story.publishedAt)}</time>
-          <span>·</span>
-          <span>{readingTime(story.readingMinutes)}</span>
-        </div>
+      {/*
+        Play sits directly under the action row, opposite the headline.
+        Listening is the alternative to reading this page, so the choice belongs
+        where the reader still has it — at the top, before the scroll — and at a
+        size that reads as the page's main action rather than a fourth icon.
+      */}
+      <div className="flex items-start justify-between gap-4">
+        <header className="min-w-0 flex-1 space-y-3">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-ink-500 dark:text-ink-400">
+            <span className="chip bg-ink-100 text-ink-600 dark:bg-ink-800 dark:text-ink-300">
+              {CATEGORY_EMOJI[story.category]} {CATEGORY_LABELS[story.category]}
+            </span>
+            <time dateTime={story.publishedAt}>{formatDate(story.publishedAt)}</time>
+            <span>·</span>
+            <span>{readingTime(story.readingMinutes)}</span>
+          </div>
 
-        <h1 className="font-serif text-2xl font-semibold leading-tight tracking-tight text-ink-900 dark:text-ink-50 sm:text-3xl">
-          {story.title}
-        </h1>
+          <h1 className="font-serif text-2xl font-semibold leading-tight tracking-tight text-ink-900 dark:text-ink-50 sm:text-3xl">
+            {story.title}
+          </h1>
 
-        {dek && <p className="text-base text-ink-600 dark:text-ink-300">{dek}</p>}
-      </header>
+          {dek && <p className="text-base text-ink-600 dark:text-ink-300">{dek}</p>}
+        </header>
+
+        <SpeechPlayer
+          sources={[{ slug: story.slug, title: story.title }]}
+          variant="round"
+          className="flex-none"
+        />
+      </div>
 
       <StoryVisual story={story} className="h-56 w-full rounded-2xl sm:h-72" size="hero" />
 
-      {/* Above the summary, because listening is an alternative to reading it —
-          not something you decide after you already have. */}
-      <SpeechPlayer sources={[{ slug: story.slug, title: story.title }]} />
+      {/* The round button renders nothing when the device has no Turkish voice,
+          and has no room to say why. This does, at full width. */}
+      <VoiceSetupNotice />
 
       {story.personalNote && (
         <aside className="rounded-2xl border-l-4 border-focus-500 bg-focus-50 p-4 dark:bg-focus-900/30">
@@ -313,6 +311,24 @@ export default function StoryPage() {
         </section>
       )}
 
+      {/*
+        The same row again, where the reading ends.
+        A verdict is formed by finishing the piece, not by opening it, and the
+        only copy used to be four screens back up — so the reader who decided
+        the story was useful had to go and find the button. Same component,
+        same state: voting here lights up the row at the top too.
+      */}
+      <div className="flex items-center justify-end border-t border-ink-200/70 pt-4 dark:border-ink-800">
+        <StoryActions
+          story={story}
+          canSave={Boolean(user)}
+          saved={saved}
+          onToggleSave={toggleSave}
+          feedback={feedback}
+          onFeedback={setFeedback}
+        />
+      </div>
+
       {story.related.length > 0 && (
         <section className="space-y-3">
           <h2 className="text-sm font-semibold text-ink-500 dark:text-ink-400">İlgili Haberler</h2>
@@ -322,6 +338,61 @@ export default function StoryPage() {
         </section>
       )}
     </article>
+  );
+}
+
+/**
+ * Verdict, share, save — the three things a reader does to a story.
+ *
+ * One component because the row is rendered twice, at the head and the foot of
+ * the article, and "the same buttons" has to survive someone editing one of
+ * them. State is passed in for the same reason: both copies read the page's.
+ */
+function StoryActions({
+  story,
+  canSave,
+  saved,
+  onToggleSave,
+  feedback,
+  onFeedback,
+}: {
+  story: StoryDetail;
+  canSave: boolean;
+  saved: boolean;
+  onToggleSave: () => void;
+  feedback: StoryFeedback | null;
+  onFeedback: (next: StoryFeedback | null) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <FeedbackButtons storyId={story.id} surface="detail" value={feedback} onChange={onFeedback} />
+      <ShareButton story={story} />
+      {canSave && (
+        <button
+          type="button"
+          onClick={onToggleSave}
+          aria-pressed={saved}
+          aria-label={saved ? 'Kayıtlardan çıkar' : 'Kaydet'}
+          title={saved ? 'Kayıtlardan çıkar' : 'Kaydet'}
+          className={`tap-44 rounded-lg p-2 transition hover:bg-ink-100 dark:hover:bg-ink-800 ${
+            saved ? 'text-focus-600 dark:text-focus-400' : 'text-ink-500 dark:text-ink-400'
+          }`}
+        >
+          <svg
+            className="h-5 w-5"
+            viewBox="0 0 24 24"
+            fill={saved ? 'currentColor' : 'none'}
+            stroke="currentColor"
+            strokeWidth={1.8}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M6 4h12v17l-6-4-6 4z" />
+          </svg>
+        </button>
+      )}
+    </div>
   );
 }
 

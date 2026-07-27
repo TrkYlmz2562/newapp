@@ -10,6 +10,18 @@ interface Props {
   initial?: StoryFeedback | null;
   surface?: string;
   className?: string;
+  /**
+   * Controlled mode, for a page that shows these buttons in more than one place.
+   *
+   * The story page repeats the row at the foot of the article, and two copies
+   * each keeping their own verdict would disagree the moment either is used —
+   * vote at the bottom, scroll up, and the top row still looks untouched. Pass
+   * `value` (any value, including null) to hand ownership to the caller; leave
+   * it undefined and the component keeps its own, which is what a feed card
+   * wants.
+   */
+  value?: StoryFeedback | null;
+  onChange?: (next: StoryFeedback | null) => void;
 }
 
 /**
@@ -29,10 +41,25 @@ interface Props {
  * text is a design choice, dropping the accessible name would leave a screen
  * reader with two unnamed buttons.
  */
-export function FeedbackButtons({ storyId, initial = null, surface, className = '' }: Props) {
+export function FeedbackButtons({
+  storyId,
+  initial = null,
+  surface,
+  className = '',
+  value,
+  onChange,
+}: Props) {
   const { user } = useAuth();
-  const [choice, setChoice] = useState<StoryFeedback | null>(initial);
+  const [own, setOwn] = useState<StoryFeedback | null>(initial);
   const [busy, setBusy] = useState(false);
+
+  const controlled = value !== undefined;
+  const choice = controlled ? value : own;
+
+  const setChoice = (next: StoryFeedback | null) => {
+    if (!controlled) setOwn(next);
+    onChange?.(next);
+  };
 
   // Nothing to record against an anonymous reader, so nothing to offer them.
   if (!user) return null;
