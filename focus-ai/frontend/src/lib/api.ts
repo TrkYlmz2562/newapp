@@ -1,10 +1,13 @@
 import type {
   AskResult,
   AuthResult,
+  BriefStatus,
   Digest,
   DigestPeriod,
   InteractionType,
+  LearningBrief,
   LearningSuggestion,
+  MentorPersona,
   Paged,
   Profile,
   Source,
@@ -313,6 +316,33 @@ export const api = {
     history: (take = 30) => request<LearningSuggestion[]>(`/api/learning/history${qs({ take })}`),
     setStatus: (id: string, status: string) =>
       request<void>(`/api/learning/${id}/status`, { method: 'PUT', body: { status } }),
+
+    /**
+     * Lesson briefs. `queueStory` and `queueDaily` are free; only `generate`
+     * spends a model call, which is why it is a separate press.
+     */
+    briefs: {
+      list: (take = 50) => request<LearningBrief[]>(`/api/learning/briefs${qs({ take })}`),
+
+      get: (id: string) => request<LearningBrief>(`/api/learning/briefs/${id}`),
+
+      queueStory: (storyId: string) =>
+        request<LearningBrief>('/api/learning/briefs', { method: 'POST', body: { storyId } }),
+
+      queueDaily: (suggestionId: string) =>
+        request<LearningBrief>('/api/learning/briefs', { method: 'POST', body: { suggestionId } }),
+
+      generate: (id: string) =>
+        request<LearningBrief>(`/api/learning/briefs/${id}/generate`, { method: 'POST' }),
+
+      setStatus: (id: string, status: BriefStatus) =>
+        request<void>(`/api/learning/briefs/${id}/status`, { method: 'PUT', body: { status } }),
+
+      remove: (id: string) => request<void>(`/api/learning/briefs/${id}`, { method: 'DELETE' }),
+    },
+
+    /** The one-off Claude Project instruction. Static text, no auth needed. */
+    persona: () => request<MentorPersona>('/api/learning/persona', { auth: false }),
   },
 
   trends: (period: DigestPeriod = 'Monthly', take = 20) =>

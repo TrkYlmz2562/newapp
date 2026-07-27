@@ -325,6 +325,42 @@ export interface LearningSuggestion {
   resources: LearningResource[];
 }
 
+/** Queued costs nothing; Generated means a model call was spent and stored. */
+export type BriefStatus = 'Queued' | 'Generated' | 'Done';
+
+export type BriefOrigin = 'Story' | 'DailySuggestion';
+
+export interface BriefStoryRef {
+  storyId: string;
+  slug: string;
+  title: string;
+}
+
+export interface LearningBrief {
+  id: string;
+  title: string;
+  status: BriefStatus;
+  origin: BriefOrigin;
+  learningGoal?: string | null;
+  entryLevel?: number | null;
+  /** "S1 · Nasıl çalışır" — rendered server-side from the persona's ladder. */
+  entryLabel?: string | null;
+  demoIdea?: string | null;
+  /** The prompt shipped without anchor questions because the planner was down. */
+  plannerUnavailable: boolean;
+  createdAt: string;
+  generatedAt?: string | null;
+  stories: BriefStoryRef[];
+  /** Only the single-brief endpoints fill this; the list omits it. */
+  prompt?: string | null;
+}
+
+export interface MentorPersona {
+  name: string;
+  version: number;
+  text: string;
+}
+
 export interface TrendPoint {
   periodStart: string;
   storyCount: number;
