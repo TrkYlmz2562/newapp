@@ -1,8 +1,9 @@
 'use client';
 
-import { useCallback, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { api, describeError } from '@/lib/api';
 import { trUpper } from '@/lib/format';
+import { detectPlatform, hasRestrictedVoiceList, type Platform } from '@/lib/platform';
 import { SPEECH_RATES, speech, useSpeech } from '@/lib/speech';
 import { VoiceSetupHelp } from './VoiceSetupHelp';
 
@@ -43,6 +44,10 @@ export function SpeechPlayer({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [position, setPosition] = useState(0);
+  const [platform, setPlatform] = useState<Platform>('unknown');
+
+  // Only after hydration; the server has no user agent to read.
+  useEffect(() => setPlatform(detectPlatform()), []);
 
   // Read inside the finished-callback, which is registered once per source and
   // must see the latest list without being re-registered.
@@ -248,29 +253,58 @@ export function SpeechPlayer({
               </span>
             )}
           </div>
-
-          {/* Only worth showing when there is a choice; most devices ship one
-              Turkish voice and a select with a single option is furniture. */}
-          {state.turkishVoices.length > 1 && (
-            <label className="mt-2 flex items-center gap-2">
-              <span className="font-mono text-[11px] tracking-[0.13em] text-ink-500 dark:text-ink-400">
-                {trUpper('ses')}
-              </span>
-              <select
-                value={state.voiceUri ?? ''}
-                onChange={(event) => speech.setVoice(event.target.value)}
-                className="min-w-0 flex-1 rounded-lg border border-ink-200 bg-white px-2 py-1 text-[13px]
-                           text-ink-700 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-200"
-              >
-                {state.turkishVoices.map((voice) => (
-                  <option key={voice.voiceURI} value={voice.voiceURI}>
-                    {voice.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
         </>
+      )}
+
+      {/*
+        The voice, whether or not anything is playing. It used to appear only
+        mid-playback, which made it unfindable: the reader who dislikes the voice
+        wants to change it before pressing play, not while it is talking over
+        them.
+
+        With a single voice the name is still shown, flat. Hiding the row
+        entirely was the other half of the problem — a reader who installs a new
+        voice on the device and finds no control at all in the app has no way to
+        tell whether the app ignored it or never saw it.
+      */}
+      <div className="mt-2 flex items-center gap-2">
+        <span className="flex-none font-mono text-[11px] tracking-[0.13em] text-ink-500 dark:text-ink-400">
+          {trUpper('ses')}
+        </span>
+
+        {state.turkishVoices.length > 1 ? (
+          <select
+            value={state.voiceUri ?? ''}
+            onChange={(event) => speech.setVoice(event.target.value)}
+            aria-label="Okuma sesi"
+            className="min-w-0 flex-1 rounded-lg border border-ink-200 bg-white px-2 py-1 text-[13px]
+                       text-ink-700 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-200"
+          >
+            {state.turkishVoices.map((voice) => (
+              <option key={voice.voiceURI} value={voice.voiceURI}>
+                {voice.name}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <span className="min-w-0 flex-1 truncate text-[13px] text-ink-700 dark:text-ink-200">
+            {state.turkishVoices[0]?.name}
+          </span>
+        )}
+      </div>
+
+      {/*
+        Kept out of the feed, where it would be a permanent apology under a
+        control nobody asked about. On the story page, where a reader who wants a
+        different voice goes looking, it is the answer to the question they are
+        about to ask.
+      */}
+      {!quiet && state.turkishVoices.length === 1 && hasRestrictedVoiceList(platform) && (
+        <p className="mt-1.5 text-[12px] leading-relaxed text-ink-500 dark:text-ink-400">
+          Bu cihazın tarayıcısına tek Türkçe ses açılıyor. Ayarlar'daki Siri sesleri
+          ve indirilebilir yüksek kaliteli sesler web'e kapalı, o yüzden burada
+          seçilemiyorlar.
+        </p>
       )}
     </section>
   );

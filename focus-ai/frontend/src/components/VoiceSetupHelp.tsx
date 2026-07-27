@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { speech } from '@/lib/speech';
 import { trUpper } from '@/lib/format';
+import { detectPlatform, hasRestrictedVoiceList, type Platform } from '@/lib/platform';
 
 /**
  * What to do when the device has no Turkish voice.
@@ -16,8 +17,6 @@ import { trUpper } from '@/lib/format';
  * Steps are per platform because the path differs on each, and "look in your
  * settings" is not help.
  */
-
-type Platform = 'ios' | 'android' | 'macos' | 'windows' | 'unknown';
 
 const STEPS: Record<Platform, { label: string; path: string[] }> = {
   ios: {
@@ -42,30 +41,16 @@ const STEPS: Record<Platform, { label: string; path: string[] }> = {
   },
 };
 
-function detect(): Platform {
-  if (typeof navigator === 'undefined') return 'unknown';
-
-  const agent = navigator.userAgent;
-
-  // iPadOS reports itself as a Mac; the touch points are what separate them.
-  if (/iPhone|iPod/.test(agent)) return 'ios';
-  if (/iPad/.test(agent) || (/Macintosh/.test(agent) && navigator.maxTouchPoints > 1)) return 'ios';
-  if (/Android/.test(agent)) return 'android';
-  if (/Macintosh/.test(agent)) return 'macos';
-  if (/Windows/.test(agent)) return 'windows';
-
-  return 'unknown';
-}
-
 export function VoiceSetupHelp({ className = '' }: { className?: string }) {
   const [platform, setPlatform] = useState<Platform>('unknown');
   const [checking, setChecking] = useState(false);
 
   // After hydration: the user agent is not available during server rendering, and
   // guessing would render the wrong instructions for one frame.
-  useEffect(() => setPlatform(detect()), []);
+  useEffect(() => setPlatform(detectPlatform()), []);
 
   const steps = STEPS[platform];
+  const restricted = hasRestrictedVoiceList(platform);
 
   const recheck = () => {
     setChecking(true);
@@ -103,6 +88,20 @@ export function VoiceSetupHelp({ className = '' }: { className?: string }) {
           </li>
         ))}
       </ol>
+
+      {/*
+        Said before they go looking, not after. Settings offers Siri voices and
+        Enhanced downloads that sound far better than the built-in one, and none
+        of them reach a browser — a reader who installs one and comes back to an
+        unchanged app has been sent on an errand by us.
+      */}
+      {restricted && (
+        <p className="mt-3 text-[12px] leading-relaxed text-ink-500 dark:text-ink-400">
+          Not: tarayıcıya yalnızca cihazla birlikte gelen sesler açılıyor. Ayarlar'da
+          göreceğin Siri sesleri ve indirilebilir yüksek kaliteli sesler burada
+          görünmez — bu Apple'ın koyduğu bir sınır.
+        </p>
+      )}
 
       <button type="button" onClick={recheck} disabled={checking} className="btn-ghost mt-3 w-full">
         {checking ? 'Bakılıyor…' : 'Kurdum, tekrar bak'}
