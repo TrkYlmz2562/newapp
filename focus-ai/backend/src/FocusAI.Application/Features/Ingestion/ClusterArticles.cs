@@ -24,6 +24,20 @@ public sealed class ClusterArticlesCommandHandler(
     ILogger<ClusterArticlesCommandHandler> logger)
     : IRequestHandler<ClusterArticlesCommand, IngestionReportDto>
 {
+    /// <summary>
+    /// How many distinct outlets a story may reach before further pickup stops
+    /// buying it a re-read.
+    /// </summary>
+    /// <remarks>
+    /// The point of re-enriching on new coverage is that corroboration changes the
+    /// trust and importance scores and sometimes the story itself. That is true of
+    /// the second outlet and the third; by the sixth it is a wire story being
+    /// reprinted, and the summary comes back saying what it already said. The
+    /// enrichment prompt only quotes three articles anyway, so beyond that the
+    /// model is not even reading the new one.
+    /// </remarks>
+    private const int MaxOutletsWorthReReading = 5;
+
     public async Task<IngestionReportDto> Handle(
         ClusterArticlesCommand request,
         CancellationToken cancellationToken)
@@ -274,6 +288,10 @@ public sealed class ClusterArticlesCommandHandler(
                 continue;
             }
 
+            // Captured before the refresh overwrites it: whether the outlet count
+            // moved is the whole test for "did this coverage add anything".
+            var outletsBefore = story.SourceCount;
+
             story.RefreshAggregates(members, sources);
 
             var vectors = members
@@ -300,8 +318,24 @@ public sealed class ClusterArticlesCommandHandler(
                 story.HeroImageUrl ??= primary.ImageUrl;
             }
 
-            // New coverage invalidates the existing summary and scores.
-            if (story.Status == StoryStatus.Published && members.Count > 1)
+            // New coverage invalidates the existing summary and scores — but only
+            // coverage that is actually new.
+            //
+            // The old test was "this story has more than one article", which every
+            // touched story passes by definition, so every follow-up piece bought a
+            // full re-enrichment. Two of them were an outlet filing a second update
+            // on its own story: more words, no new evidence, and a summary that came
+            // back saying what it said before.
+            //
+            // A new outlet is different — that is corroboration, and it moves the
+            // trust and importance scores. So the count of distinct outlets is the
+            // test. Past MaxOutletsWorthReReading it stops being one: the marginal
+            // outlet at that point is carrying the same wire copy, and how the
+            // tellings differ is measured separately, deterministically, by the
+            // coverage comparison.
+            if (story.Status == StoryStatus.Published &&
+                story.SourceCount > outletsBefore &&
+                story.SourceCount <= MaxOutletsWorthReReading)
             {
                 story.Status = StoryStatus.Enriching;
             }

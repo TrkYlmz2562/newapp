@@ -179,6 +179,48 @@ internal static class Prompts
         Anahtar olarak slug kullan: dotnet, csharp, angular, react, python, docker, azure, aws, kubernetes, sql, mobile, ai.
         """;
 
+    /// <summary>
+    /// Both jobs in one call: summarise the story, then judge it.
+    /// </summary>
+    /// <remarks>
+    /// Composed from the two prompts above rather than rewritten as a third. They
+    /// carry rules that were tuned line by line — the Turkish translation policy,
+    /// the visualEntity constraints, the refusal to inflate — and a hand-merged
+    /// copy would drift away from them the first time either was edited. This way
+    /// there is still exactly one place where each rule lives.
+    ///
+    /// The wrapper is last because that is where a model looks for the output
+    /// contract, and it has to win over the two "yalnızca JSON ver" lines above it
+    /// that each describe a different top-level object.
+    ///
+    /// Nested rather than flattened into one object: the two schemas stay
+    /// recognisably the ones defined above, and the parser can accept one half and
+    /// fall back on the other. A story that summarises well but judges badly still
+    /// gets its summary.
+    /// </remarks>
+    public const string EnrichSystem = SummarySystem + """
+
+
+        ---
+
+
+        """ + AnalysisSystem + """
+
+
+        ---
+
+        ÖNEMLİ — ÇIKTI BİÇİMİ. Yukarıda iki ayrı görev ve iki ayrı şema tanımlandı.
+        İkisini de tek seferde yap ve TEK bir JSON nesnesi döndür; iki şemayı şu iki
+        anahtarın altına yerleştir:
+
+        {
+          "summary":  { birinci şemadaki alanlar },
+          "analysis": { ikinci şemadaki alanlar }
+        }
+
+        Her iki bölümü de doldur. Başka hiçbir metin ekleme.
+        """;
+
     public const string SearchParseSystem = """
         Kullanıcının doğal dildeki arama sorgusunu yapılandırılmış filtreye çevir.
         Bugünün tarihi prompt içinde verilecek. Göreli zaman ifadelerini ("son bir ayda",

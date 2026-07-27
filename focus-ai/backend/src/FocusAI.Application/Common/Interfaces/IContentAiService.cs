@@ -152,17 +152,33 @@ public sealed record AskAnswer
     public double Confidence { get; init; } = 0.5;
 }
 
+/// <summary>Both halves of enrichment, produced together.</summary>
+/// <param name="Summary">What the story says.</param>
+/// <param name="Analysis">What it is worth.</param>
+public sealed record StoryEnrichmentResult(
+    StorySummaryResult Summary,
+    StoryAnalysisResult Analysis);
+
 /// <summary>
 /// High-level AI operations the Application layer needs. Keeping prompts behind
 /// this port means a handler never has to know what a system prompt looks like.
 /// </summary>
 public interface IContentAiService
 {
-    Task<StorySummaryResult> SummarizeAsync(
-        StoryPromptContext context,
-        CancellationToken cancellationToken = default);
-
-    Task<StoryAnalysisResult> AnalyzeAsync(
+    /// <summary>
+    /// Summarises a story and judges it, in one call.
+    /// </summary>
+    /// <remarks>
+    /// One method rather than two because it was one body of text either way. The
+    /// summary pass and the analysis pass were handed byte-identical excerpts and
+    /// asked to read them independently, so every story paid for its own source
+    /// material twice — and paid twice again on every re-enrichment.
+    ///
+    /// Either half may come back from the extractive fallback while the other came
+    /// from the model; the caller cannot tell and does not need to, since both
+    /// results already carry their own provenance.
+    /// </remarks>
+    Task<StoryEnrichmentResult> EnrichAsync(
         StoryPromptContext context,
         CancellationToken cancellationToken = default);
 

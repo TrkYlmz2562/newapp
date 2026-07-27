@@ -98,8 +98,11 @@ public sealed class EnrichStoriesCommandHandler(
                 story.Status = StoryStatus.Enriching;
 
                 var context = BuildPromptContext(story);
-                var summary = await ai.SummarizeAsync(context, cancellationToken);
-                var analysis = await ai.AnalyzeAsync(context, cancellationToken);
+                // One call for both halves; they were being handed identical
+                // excerpts and asked to read them twice.
+                var enriched = await ai.EnrichAsync(context, cancellationToken);
+                var summary = enriched.Summary;
+                var analysis = enriched.Analysis;
 
                 summary = await TranslateAsync(story, context, summary, cancellationToken);
 

@@ -21,28 +21,34 @@ public sealed class ContentAiService(
     IDateTimeProvider clock,
     ILogger<ContentAiService> logger) : IContentAiService
 {
-    public async Task<StorySummaryResult> SummarizeAsync(
+    public async Task<StoryEnrichmentResult> EnrichAsync(
         StoryPromptContext context,
         CancellationToken cancellationToken = default)
     {
         var client = clientFactory.Create();
         if (!client.IsEnabled)
         {
-            return ExtractiveFallback.Summarize(context);
+            return new StoryEnrichmentResult(
+                ExtractiveFallback.Summarize(context),
+                ExtractiveFallback.Analyze(context));
         }
 
         var response = await SendAsync(
             client,
             new LlmRequest
             {
-                SystemPrompt = Prompts.SummarySystem,
+                SystemPrompt = Prompts.EnrichSystem,
                 Messages = [LlmMessage.User(BuildStoryPrompt(context))],
                 JsonMode = true,
-                // Headroom for the visual fields: a response truncated mid-JSON
-                // does not lose just those keys, it drops the whole summary to
-                // the extractive fallback.
-                MaxTokens = 1500,
-                Operation = "summary"
+                // The old two budgets added together, plus a little. Headroom
+                // matters more here than it did apart: a response truncated
+                // mid-JSON does not lose the tail keys, it loses both halves.
+                MaxTokens = 2600,
+                // The analysis half asked for 0.3 and the summary half took the
+                // default. Judgement is the part that suffers from invention, so
+                // the lower of the two wins.
+                Temperature = 0.3,
+                Operation = "enrich"
             },
             cancellationToken);
 
@@ -50,13 +56,46 @@ public sealed class ContentAiService(
         if (!response.Succeeded || json is not { } root)
         {
             logger.LogWarning(
-                "FocusAI summary fell back to extractive mode for '{Title}': {Error}",
+                "FocusAI enrichment fell back to extractive mode for '{Title}': {Error}",
                 context.Title,
                 response.Error ?? "unparseable JSON");
 
-            return ExtractiveFallback.Summarize(context);
+            return new StoryEnrichmentResult(
+                ExtractiveFallback.Summarize(context),
+                ExtractiveFallback.Analyze(context));
         }
 
+        // Each half is read independently, and each falls back on its own. A model
+        // that writes a clean summary and then fumbles the verdict should cost the
+        // story its verdict, not its summary.
+        return new StoryEnrichmentResult(
+            ParseSummary(Section(root, "summary"), context, client, response),
+            ParseAnalysis(Section(root, "analysis"), context, client, response));
+    }
+
+    /// <summary>
+    /// Pulls one half out of the combined response.
+    /// </summary>
+    /// <remarks>
+    /// Falls back to the whole object when the wrapper key is missing, which is the
+    /// shape a model produces when it ignores the nesting instruction and answers
+    /// one of the two schemas flat. The keys do not collide between the halves, so
+    /// reading a flat object as either half finds whatever it did answer and lets
+    /// the other half fall back on its own.
+    /// </remarks>
+    private static JsonElement Section(JsonElement root, string name) =>
+        root.ValueKind == JsonValueKind.Object &&
+        root.TryGetProperty(name, out var section) &&
+        section.ValueKind == JsonValueKind.Object
+            ? section
+            : root;
+
+    private static StorySummaryResult ParseSummary(
+        JsonElement root,
+        StoryPromptContext context,
+        ILlmClient client,
+        LlmResponse response)
+    {
         var summary = JsonExtractor.GetString(root, "summary");
         if (string.IsNullOrWhiteSpace(summary))
         {
@@ -95,35 +134,12 @@ public sealed class ContentAiService(
         };
     }
 
-    public async Task<StoryAnalysisResult> AnalyzeAsync(
+    private static StoryAnalysisResult ParseAnalysis(
+        JsonElement root,
         StoryPromptContext context,
-        CancellationToken cancellationToken = default)
+        ILlmClient client,
+        LlmResponse response)
     {
-        var client = clientFactory.Create();
-        if (!client.IsEnabled)
-        {
-            return ExtractiveFallback.Analyze(context);
-        }
-
-        var response = await SendAsync(
-            client,
-            new LlmRequest
-            {
-                SystemPrompt = Prompts.AnalysisSystem,
-                Messages = [LlmMessage.User(BuildStoryPrompt(context))],
-                JsonMode = true,
-                MaxTokens = 1200,
-                Temperature = 0.3,
-                Operation = "analysis"
-            },
-            cancellationToken);
-
-        var json = JsonExtractor.TryExtract(response.Content);
-        if (!response.Succeeded || json is not { } root)
-        {
-            return ExtractiveFallback.Analyze(context);
-        }
-
         var why = JsonExtractor.GetString(root, "whyImportant");
         if (string.IsNullOrWhiteSpace(why))
         {
