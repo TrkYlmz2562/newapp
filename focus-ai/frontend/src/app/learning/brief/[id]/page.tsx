@@ -130,12 +130,30 @@ export default function BriefPage() {
           {trUpper('‹ Öğren')}
         </Link>
 
-        <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[11px] text-ink-500 dark:text-ink-400">
-          {brief.entryLabel && (
-            <span className="text-focus-600 dark:text-focus-400">{brief.entryLabel}</span>
-          )}
-          {brief.stories.length > 0 && <span>· {brief.stories.length} haber</span>}
-          {brief.status === 'Done' && <span className="text-signal-trust">· ✓ çalışıldı</span>}
+        {/* Joined rather than each part carrying its own separator: the entry
+            level is absent whenever the planner did not run, and a hardcoded
+            leading "·" then hangs on its own. */}
+        <div className="mt-3 flex flex-wrap items-center gap-x-1.5 gap-y-1 font-mono text-[11px] text-ink-500 dark:text-ink-400">
+          {[
+            brief.entryLabel && (
+              <span key="level" className="text-focus-600 dark:text-focus-400">
+                {brief.entryLabel}
+              </span>
+            ),
+            brief.stories.length > 0 && <span key="count">{brief.stories.length} haber</span>,
+            brief.status === 'Done' && (
+              <span key="done" className="text-signal-trust">
+                ✓ çalışıldı
+              </span>
+            ),
+          ]
+            .filter(Boolean)
+            .map((part, index) => (
+              <span key={index} className="flex items-center gap-1.5">
+                {index > 0 && <span aria-hidden="true">·</span>}
+                {part}
+              </span>
+            ))}
         </div>
 
         <h1 className="mt-1.5 font-serif text-2xl font-semibold leading-tight tracking-tight text-ink-900 dark:text-ink-50">
