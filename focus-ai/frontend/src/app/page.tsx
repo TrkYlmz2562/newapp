@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/components/AuthProvider';
 import { PageHeader, SearchBar, EmptyState, ErrorState } from '@/components/Shell';
+import { SpeechPlayer } from '@/components/SpeechPlayer';
 import { StoryCard, StoryCardSkeleton } from '@/components/StoryCard';
 import { api } from '@/lib/api';
 import { CATEGORY_EMOJI, CATEGORY_LABELS, formatDayHeading, readingTime } from '@/lib/format';
@@ -58,6 +59,13 @@ export default function HomePage() {
   const heroStory = digest?.items[0]?.story ?? top;
   const rest = digest?.items.slice(1) ?? [];
 
+  // The day, in the order the digest ranked it. Capped because a queue longer
+  // than this is not a briefing any more, and the player fetches each script
+  // only when it reaches it.
+  const listenQueue = (digest?.items.length ? digest.items.map((entry) => entry.story) : heroStory ? [heroStory] : [])
+    .slice(0, 10)
+    .map((story) => ({ slug: story.slug, title: story.title }));
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -107,6 +115,19 @@ export default function HomePage() {
         </div>
       ) : heroStory ? (
         <div className="space-y-4 px-4 sm:px-5">
+          {/*
+            The listening counterpart to "5 dakikada oku". Placed above the
+            stories rather than below them, because the whole point is to decide
+            not to scroll.
+          */}
+          {listenQueue.length > 0 && (
+            <SpeechPlayer
+              sources={listenQueue}
+              label={`Günü dinle · ${listenQueue.length} haber`}
+              quiet
+            />
+          )}
+
           <section aria-labelledby="top-story">
             <h2 id="top-story" className="mb-2 text-sm font-semibold text-ink-500 dark:text-ink-400">
               🔥 Günün En Önemlisi

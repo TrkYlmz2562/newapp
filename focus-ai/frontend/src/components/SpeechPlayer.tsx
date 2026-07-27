@@ -25,10 +25,17 @@ export function SpeechPlayer({
   sources,
   label,
   className = '',
+  quiet = false,
 }: {
   sources: SpeechSource[];
   label?: string;
   className?: string;
+  /**
+   * Render nothing when the device has no Turkish voice, instead of the setup
+   * panel. For the feed: a reader who never wanted audio should not have the top
+   * of their day taken by instructions for a feature they did not ask about.
+   */
+  quiet?: boolean;
 }) {
   const id = useId();
   const state = useSpeech();
@@ -92,7 +99,7 @@ export function SpeechPlayer({
   }
 
   if (state.turkishVoices.length === 0) {
-    return <VoiceSetupHelp className={className} />;
+    return quiet ? null : <VoiceSetupHelp className={className} />;
   }
 
   const toggle = () => {
