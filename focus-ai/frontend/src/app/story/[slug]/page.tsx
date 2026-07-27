@@ -11,6 +11,7 @@ import { CoverageComparison } from '@/components/CoverageComparison';
 import { FeedbackButtons } from '@/components/FeedbackButtons';
 import { LearnButton } from '@/components/LearnButton';
 import { ShareButton } from '@/components/ShareButton';
+import { SpeechPlayer } from '@/components/SpeechPlayer';
 import { StoryTimeline } from '@/components/StoryTimeline';
 import { StoryVisual } from '@/components/StoryVisual';
 import { TrustPanel } from '@/components/TrustBadge';
@@ -195,6 +196,10 @@ export default function StoryPage() {
       </header>
 
       <StoryVisual story={story} className="h-56 w-full rounded-2xl sm:h-72" size="hero" />
+
+      {/* Above the summary, because listening is an alternative to reading it —
+          not something you decide after you already have. */}
+      <SpeechPlayer sources={[{ slug: story.slug, title: story.title }]} />
 
       {story.personalNote && (
         <aside className="rounded-2xl border-l-4 border-focus-500 bg-focus-50 p-4 dark:bg-focus-900/30">
