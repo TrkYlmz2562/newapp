@@ -80,6 +80,23 @@ public class BriefComposerTests
     }
 
     [Fact]
+    public void Corroboration_never_upgrades_a_reported_claim_to_a_fact()
+    {
+        var prompt = BriefComposer.Compose(File(Story(evidential: true, sources:
+        [
+            new BriefSourceRef("Anthropic", true, Published),
+            new BriefSourceRef("The Verge", false, Published.AddHours(2)),
+            new BriefSourceRef("Ars Technica", false, Published.AddHours(3))
+        ])));
+
+        // Three outlets repeating the same report corroborate the report, not the
+        // fact — telling the mentor otherwise would contradict the warning below it.
+        Assert.DoesNotContain("Doğrulanmış kabul et", prompt);
+        Assert.Contains("Kaynak sayısı burada teyit sayılmaz", prompt);
+        Assert.Contains("-mış kipi", prompt);
+    }
+
+    [Fact]
     public void A_story_that_asserts_rather_than_reports_carries_no_warning() =>
         Assert.DoesNotContain("-mış kipi", BriefComposer.Compose(File(Story(evidential: false))));
 

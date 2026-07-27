@@ -196,14 +196,21 @@ public static class BriefComposer
             trust += $" ({OneLine(story.TrustExplanation)})";
         }
 
-        var register = (total, official) switch
+        // The evidential marker outranks the source count, and has to: several
+        // outlets carrying the same reported claim corroborate the report, not the
+        // fact. Without this the register would tell the mentor "doğrulanmış kabul
+        // et" two lines above the warning telling it the opposite.
+        var register = (total, official, story.HasEvidentialClaim) switch
         {
-            (0, _) => "Kaynak kaydı yok.",
-            (1, 0) =>
+            (0, _, _) => "Kaynak kaydı yok.",
+            (_, _, true) =>
+                $"{Count(total)}, ama metin iddiayı aktarıyor. Kaynak sayısı burada " +
+                "teyit sayılmaz — aynı iddiayı tekrarlıyor olabilirler.",
+            (1, 0, _) =>
                 "Tek kaynak, resmî değil. Bu haberdeki her iddiayı \"kaynağın " +
                 "aktardığına göre\" diye ele al.",
-            (1, _) => "Tek kaynak, ama resmî. Doğrudan aktarabilirsin.",
-            (_, 0) =>
+            (1, _, _) => "Tek kaynak, ama resmî. Doğrudan aktarabilirsin.",
+            (_, 0, _) =>
                 $"{total} kaynak aynı şeyi bildiriyor, resmî doğrulama yok. Olgu " +
                 "gibi kullanabilirsin ama resmî açıklama beklenmediğini not düş.",
             _ => $"{total} kaynak doğruladı, {official}'i resmî. Doğrulanmış kabul et."
@@ -211,6 +218,8 @@ public static class BriefComposer
 
         return $"**Kanıt kaydı:** {register} {trust}.";
     }
+
+    private static string Count(int total) => total == 1 ? "Tek kaynak" : $"{total} kaynak";
 
     private static void AppendSources(StringBuilder text, BriefStoryFile story)
     {

@@ -6,6 +6,7 @@ using FocusAI.Application.Features.Learning;
 using FocusAI.Application.Features.Profile;
 using FocusAI.Application.Features.Trends;
 using FocusAI.Domain.Enums;
+using FocusAI.Domain.Learning;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -145,6 +146,87 @@ public static class UserEndpoints
                 return Results.NoContent();
             })
             .WithSummary("Öğrenme önerisinin durumunu günceller.");
+
+        MapBriefs(group);
+    }
+
+    /// <summary>
+    /// Lesson briefs: what a saved story becomes when the reader wants to study it
+    /// rather than just have read it.
+    /// </summary>
+    private static void MapBriefs(RouteGroupBuilder group)
+    {
+        // Static product text, and the profile page needs it before it has anything
+        // else — no reason to make it an authenticated read.
+        group.MapGet("/persona", () => Results.Ok(new PersonaDto(
+                FocusMentorPersona.Name,
+                FocusMentorPersona.Version,
+                FocusMentorPersona.Text)))
+            .WithSummary("Claude'da bir kez kurulacak Focus Mentor talimatı.")
+            .Produces<PersonaDto>()
+            .AllowAnonymous();
+
+        group.MapGet("/briefs", async ([FromQuery] int? take, ISender sender, CancellationToken ct) =>
+                Results.Ok(await sender.Send(new GetBriefsQuery(take ?? 50), ct)))
+            .WithSummary("Öğrenme kuyruğu ve üretilmiş brifler.")
+            .Produces<IReadOnlyList<LearningBriefDto>>();
+
+        group.MapGet("/briefs/{id:guid}", async (Guid id, ISender sender, CancellationToken ct) =>
+                Results.Ok(await sender.Send(new GetBriefQuery(id), ct)))
+            .WithSummary("Bir brif, kopyalanacak promt dâhil.")
+            .Produces<LearningBriefDto>();
+
+        group.MapPost("/briefs", async (
+                QueueBriefRequest request,
+                ISender sender,
+                CancellationToken ct) =>
+            {
+                if (request.SuggestionId is { } suggestionId)
+                {
+                    return Results.Ok(await sender.Send(new QueueDailyBriefCommand(suggestionId), ct));
+                }
+
+                if (request.StoryId is { } storyId)
+                {
+                    return Results.Ok(await sender.Send(new QueueStoryBriefCommand(storyId), ct));
+                }
+
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["storyId"] = ["storyId ya da suggestionId verilmeli."]
+                });
+            })
+            .WithSummary("Bir haberi ya da günün önerisini öğrenme kuyruğuna alır.")
+            .Produces<LearningBriefDto>();
+
+        // The only route here that spends a model call, so it is the only one that
+        // takes the AI rate limit.
+        group.MapPost("/briefs/{id:guid}/generate", async (
+                Guid id,
+                ISender sender,
+                CancellationToken ct) =>
+                Results.Ok(await sender.Send(new GenerateBriefCommand(id), ct)))
+            .WithSummary("Brifin promtunu üretir ve kaydeder.")
+            .Produces<LearningBriefDto>()
+            .RequireRateLimiting("ai");
+
+        group.MapPut("/briefs/{id:guid}/status", async (
+                Guid id,
+                BriefStatusRequest request,
+                ISender sender,
+                CancellationToken ct) =>
+            {
+                await sender.Send(new UpdateBriefStatusCommand(id, request.Status), ct);
+                return Results.NoContent();
+            })
+            .WithSummary("Brifin durumunu günceller.");
+
+        group.MapDelete("/briefs/{id:guid}", async (Guid id, ISender sender, CancellationToken ct) =>
+            {
+                await sender.Send(new DeleteBriefCommand(id), ct);
+                return Results.NoContent();
+            })
+            .WithSummary("Brifi siler.");
     }
 
     private static void MapTrends(IEndpointRouteBuilder app)
@@ -163,4 +245,15 @@ public static class UserEndpoints
     }
 
     public sealed record LearningStatusRequest(LearningStatus Status);
+
+    /// <summary>
+    /// Exactly one of the two is set: a story from the feed, or the day's
+    /// suggestion. Validated in the handler rather than by shape, so the frontend
+    /// has one endpoint to call for both entry points.
+    /// </summary>
+    public sealed record QueueBriefRequest(Guid? StoryId, Guid? SuggestionId);
+
+    public sealed record BriefStatusRequest(BriefStatus Status);
+
+    public sealed record PersonaDto(string Name, int Version, string Text);
 }
