@@ -19,11 +19,16 @@ public class StoryVisibilityTests
     private static readonly Func<Story, bool> Visible =
         StoryFilters.VisibleToReaders.Compile();
 
+    /// <summary>Comfortably over the importance floor, so these fixtures test the
+    /// finance gate rather than the one below it.</summary>
+    private const int Important = StoryFilters.MinImportance + 20;
+
     private static Story Finance(CommitmentTier tier, bool reversed = false) => new()
     {
         Title = "Faiz kararı",
         Slug = "faiz-karari",
         Category = ContentCategory.Finance,
+        ImportanceScore = Important,
         Commitment = new StoryCommitment
         {
             Tier = tier,
@@ -67,6 +72,7 @@ public class StoryVisibilityTests
             Title = "Piyasalar hareketlendi",
             Slug = "piyasalar",
             Category = ContentCategory.Finance,
+            ImportanceScore = Important,
             Commitment = null
         };
 
@@ -82,6 +88,7 @@ public class StoryVisibilityTests
         Title = "Merkez Bankası faiz kararını açıkladı",
         Slug = "faiz",
         Category = ContentCategory.Finance,
+        ImportanceScore = Important,
         Commitment = null,
         SourceCount = sources,
         OfficialSourceCount = official,
@@ -133,6 +140,37 @@ public class StoryVisibilityTests
     }
 
     [Theory]
+    [InlineData(StoryFilters.MinImportance - 1, false)]
+    [InlineData(StoryFilters.MinImportance, true)]
+    [InlineData(StoryFilters.MinImportance + 30, true)]
+    public void The_importance_floor_applies_to_every_category(int importance, bool expected)
+    {
+        // Read-time, which is what makes it retroactive: raising the floor hides the
+        // back catalogue that no longer clears it without deleting a row, and
+        // lowering it brings everything straight back.
+        var story = new Story
+        {
+            Title = "Bir güncelleme daha",
+            Slug = "guncelleme",
+            Category = ContentCategory.Software,
+            ImportanceScore = importance
+        };
+
+        Assert.Equal(expected, Visible(story));
+    }
+
+    [Fact]
+    public void Grounded_finance_still_has_to_clear_the_importance_floor()
+    {
+        // The two bars are independent, and finance has to pass both: being firmly
+        // committed says the development is real, not that it is worth a slot.
+        var story = Finance(CommitmentTier.Realized);
+        story.ImportanceScore = StoryFilters.MinImportance - 1;
+
+        Assert.False(Visible(story));
+    }
+
+    [Theory]
     [InlineData(ContentCategory.Ai)]
     [InlineData(ContentCategory.Security)]
     [InlineData(ContentCategory.Software)]
@@ -140,7 +178,13 @@ public class StoryVisibilityTests
     {
         // The extra bar is finance-specific. A security story with no commitment
         // row — which is all of them — must not be filtered out by this.
-        var story = new Story { Title = "OpenSSH 10.2", Slug = "openssh", Category = category };
+        var story = new Story
+        {
+            Title = "OpenSSH 10.2",
+            Slug = "openssh",
+            Category = category,
+            ImportanceScore = Important
+        };
 
         Assert.True(Visible(story));
     }

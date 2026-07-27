@@ -161,5 +161,15 @@ public sealed class IngestionOptions
     /// <summary>Run ingestion, clustering and enrichment on a schedule.</summary>
     public bool EnableBackgroundJobs { get; set; } = true;
 
-    public int IngestCronMinutes { get; set; } = 20;
+    /// <summary>
+    /// How often the whole pipeline runs.
+    /// </summary>
+    /// <remarks>
+    /// An hour rather than twenty minutes. Three passes an hour did not make the
+    /// feed three times fresher — the feeds themselves do not update that often —
+    /// but it did triple the churn: partially-clustered stories re-enriched as each
+    /// follow-up landed, and failed stories retried twice as often as they needed
+    /// to. A story that breaks now is on screen within the hour either way.
+    /// </remarks>
+    public int IngestCronMinutes { get; set; } = 60;
 }

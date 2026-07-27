@@ -12,6 +12,29 @@ namespace FocusAI.Application.Common.Mappings;
 public static class StoryFilters
 {
     /// <summary>
+    /// The importance a story has to reach before it is worth a slot in a list.
+    /// </summary>
+    /// <remarks>
+    /// The one knob for how much the feed carries. On the 0-100 scale
+    /// <see cref="Domain.Scoring.ImportanceScoreCalculator"/> produces, a fresh
+    /// single-source item of average trust lands near 47 and a story three outlets
+    /// picked up — one of them official — lands near 63. So 50 keeps what more than
+    /// one newsroom thought was worth writing and drops the long tail of filler
+    /// nobody corroborated. Raise it to thin the feed further; lower it to widen.
+    ///
+    /// Applied at read time rather than at ingestion, which is what makes it
+    /// retroactive: raising the bar hides the back catalogue that no longer clears
+    /// it, without deleting a single row. Nothing is lost, and lowering it again
+    /// brings everything straight back.
+    ///
+    /// It cannot gate enrichment, however tempting that is as a way to stop paying
+    /// for stories nobody will see: the score is computed *by* enrichment, from the
+    /// model's own importance read. There is no score to test until the call has
+    /// already been made.
+    /// </remarks>
+    public const int MinImportance = 50;
+
+    /// <summary>
     /// Whether a story may appear in a reader-facing list.
     /// </summary>
     /// <remarks>
@@ -60,12 +83,13 @@ public static class StoryFilters
     /// rule.
     /// </remarks>
     public static Expression<Func<Story, bool>> VisibleToReaders => story =>
-        story.Category != ContentCategory.Finance ||
+        story.ImportanceScore >= MinImportance &&
+        (story.Category != ContentCategory.Finance ||
         (story.Commitment != null &&
          !story.Commitment.IsReversed &&
          (story.Commitment.Tier == CommitmentTier.Realized ||
           story.Commitment.Tier == CommitmentTier.EnactedDated ||
           story.Commitment.Tier == CommitmentTier.OfficialCommitment ||
           story.Commitment.Tier == CommitmentTier.ConditionalPending)) ||
-        (story.Commitment == null && !story.HasEvidentialClaim);
+         (story.Commitment == null && !story.HasEvidentialClaim));
 }

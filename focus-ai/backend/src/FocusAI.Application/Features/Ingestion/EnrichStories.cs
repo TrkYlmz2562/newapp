@@ -29,10 +29,23 @@ public sealed class EnrichStoriesCommandHandler(
     ILogger<EnrichStoriesCommandHandler> logger) : IRequestHandler<EnrichStoriesCommand, IngestionReportDto>
 {
     /// <summary>Excerpt budget per member article handed to the model.</summary>
-    private const int ExcerptLength = 2500;
+    /// <remarks>
+    /// Down from 2500. A news lede front-loads: what happened is in the first few
+    /// hundred words and the rest is background the summary was never going to
+    /// quote. The excerpts are also sent twice per story — once to summarise, once
+    /// to analyse — so every character here is paid for twice.
+    /// </remarks>
+    private const int ExcerptLength = 1500;
 
     /// <summary>At most this many member articles are quoted into the prompt.</summary>
-    private const int MaxArticlesInPrompt = 6;
+    /// <remarks>
+    /// Down from 6, and the ordering above is what makes that safe: primary first,
+    /// then official, then earliest. The three that survive are the ones carrying
+    /// the facts; outlets four through six are usually the same wire copy in
+    /// different words, which is precisely what the coverage comparison measures
+    /// separately and deterministically.
+    /// </remarks>
+    private const int MaxArticlesInPrompt = 3;
 
     public async Task<IngestionReportDto> Handle(
         EnrichStoriesCommand request,
