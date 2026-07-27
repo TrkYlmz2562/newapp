@@ -14,6 +14,7 @@ import type {
   SourceHealthReport,
   StoryCard,
   StoryDetail,
+  StorySpeech,
   Topic,
   Trend,
   User,
@@ -310,6 +311,9 @@ export const api = {
       quietHoursEnd: number;
     }>) => request<void>('/api/profile/notifications', { method: 'PUT', body: payload }),
   },
+
+  /** Read-aloud script. Fetched only when the reader presses play. */
+  speech: (slug: string) => request<StorySpeech>(`/api/stories/${slug}/speech`, { auth: false }),
 
   learning: {
     today: () => request<LearningSuggestion | undefined>('/api/learning/today'),

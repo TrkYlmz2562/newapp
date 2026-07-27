@@ -325,6 +325,31 @@ export interface LearningSuggestion {
   resources: LearningResource[];
 }
 
+export type SpeechChunkKind =
+  | 'Title'
+  | 'Dek'
+  | 'Summary'
+  | 'Heading'
+  | 'WhyItMatters'
+  | 'WhoIsAffected'
+  | 'KeyPoint'
+  | 'WhatShouldIDo';
+
+/** One utterance. Short by design — see SpeechScript on the server. */
+export interface SpeechChunk {
+  text: string;
+  kind: SpeechChunkKind;
+}
+
+export interface StorySpeech {
+  storyId: string;
+  slug: string;
+  title: string;
+  /** Rough seconds at rate 1. Only ever shown as "about". */
+  estimatedSeconds: number;
+  chunks: SpeechChunk[];
+}
+
 /** Queued costs nothing; Generated means a model call was spent and stored. */
 export type BriefStatus = 'Queued' | 'Generated' | 'Done';
 
