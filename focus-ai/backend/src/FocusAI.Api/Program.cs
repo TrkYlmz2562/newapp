@@ -107,9 +107,33 @@ builder.Services.AddRateLimiter(options =>
                 Window = TimeSpan.FromMinutes(1)
             }));
 
+    // Credential stuffing, and nothing else. Ten guesses a minute is the right
+    // budget for someone trying passwords; it is not a budget for anything a
+    // signed-in reader's browser does on its own.
     options.AddFixedWindowLimiter("auth", limiter =>
     {
         limiter.PermitLimit = 10;
+        limiter.Window = TimeSpan.FromMinutes(1);
+    });
+
+    /*
+     * Session upkeep: "who am I", "renew my token", "sign me out".
+     *
+     * These used to share the credential-stuffing budget, and that is a way to
+     * lock a reader out of their own account by browsing. /me runs on every page
+     * load and /refresh on every expired token, so ten a minute is reached by
+     * ordinary use — and once it is, the 429 lands on /refresh, the client treats
+     * a refusal as a dead session, and the reader is signed out. Their next move
+     * is to sign in again, which needs the same exhausted budget, so the login
+     * fails too and the app looks broken rather than busy.
+     *
+     * None of these is a guessing game: /me and /logout need a valid token, and
+     * /refresh needs an unrevoked rotating one that is invalidated the moment it
+     * is reused. So the limit here is only a runaway-client backstop.
+     */
+    options.AddFixedWindowLimiter("session", limiter =>
+    {
+        limiter.PermitLimit = 120;
         limiter.Window = TimeSpan.FromMinutes(1);
     });
 

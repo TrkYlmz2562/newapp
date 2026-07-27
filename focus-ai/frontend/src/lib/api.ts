@@ -107,8 +107,18 @@ async function refreshAccessToken(): Promise<boolean> {
         body: JSON.stringify({ refreshToken }),
       });
 
-      if (!response.ok) {
+      // Only a refusal means the refresh token is actually dead. It used to clear
+      // the session on any non-OK response, which handed the reader a logout for a
+      // rate limit, a 500 or a proxy hiccup — and because the stored refresh token
+      // went with it, there was no way back but to sign in again. Anything that is
+      // not an outright rejection is treated as "not now": the request fails, the
+      // session survives, and the next attempt can succeed.
+      if (response.status === 401 || response.status === 403) {
         tokenStore.clear();
+        return false;
+      }
+
+      if (!response.ok) {
         return false;
       }
 

@@ -33,9 +33,26 @@ public sealed class DatabaseInitializer(
         await SeedTopicsAsync(cancellationToken);
         await SeedSourcesAsync(cancellationToken);
         await SeedBadgesAsync(cancellationToken);
-        await RepairStorySlugsAsync(cancellationToken);
 
         await db.SaveChangesAsync(cancellationToken);
+
+        // Deliberately last, deliberately after its own save, and deliberately
+        // unable to bring the process down with it.
+        //
+        // Startup failures here are fatal by design — Program.cs rethrows and the
+        // API refuses to serve, which is right for a schema that does not match the
+        // code. It is not right for tidying up some slugs. A cosmetic repair that
+        // can take the whole API offline, login included, is a worse bug than the
+        // 404s it exists to fix.
+        try
+        {
+            await RepairStorySlugsAsync(cancellationToken);
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "FocusAI story slug repair failed; continuing without it");
+        }
     }
 
     /// <summary>
