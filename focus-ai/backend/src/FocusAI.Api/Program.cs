@@ -224,7 +224,23 @@ await InitializeDatabaseAsync(app);
 
 if (hangfireEnabled)
 {
-    ScheduleRecurringJobs(app, ingestionOptions);
+    // Loud, but not fatal.
+    //
+    // This runs before Kestrel starts listening, so anything thrown here exits the
+    // process and takes every endpoint with it — reads, login, swagger, the lot.
+    // That is far too much to lose over a background schedule: an API serving
+    // yesterday's stories is a degraded product, an API that will not start is no
+    // product at all. The operator gets a critical log; the reader gets a site.
+    try
+    {
+        ScheduleRecurringJobs(app, ingestionOptions);
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogCritical(
+            ex,
+            "FocusAI could not schedule background jobs — the API will serve, but nothing will be ingested");
+    }
 }
 
 app.Run();
@@ -260,12 +276,11 @@ static async Task InitializeDatabaseAsync(WebApplication app)
 static void ScheduleRecurringJobs(WebApplication app, IngestionOptions options)
 {
     var recurring = app.Services.GetRequiredService<IRecurringJobManager>();
-    var interval = Math.Clamp(options.IngestCronMinutes, 5, 240);
 
     recurring.AddOrUpdate<PipelineJobs>(
         "focus-ai-pipeline",
         job => job.RunIngestionAsync(CancellationToken.None),
-        $"*/{interval} * * * *");
+        options.CronExpression);
 
     // Hourly, because "08:00" means 08:00 wherever the reader is; the job itself
     // filters down to the users whose local hour has just arrived.

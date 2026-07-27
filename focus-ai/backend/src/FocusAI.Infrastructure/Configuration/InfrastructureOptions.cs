@@ -172,4 +172,31 @@ public sealed class IngestionOptions
     /// to. A story that breaks now is on screen within the hour either way.
     /// </remarks>
     public int IngestCronMinutes { get; set; } = 60;
+
+    /// <summary>Bounds the configured interval to something sane.</summary>
+    public int EffectiveCronMinutes => Math.Clamp(IngestCronMinutes, 5, 240);
+
+    /// <summary>The schedule as a cron expression the parser will actually accept.</summary>
+    public string CronExpression => BuildCron(EffectiveCronMinutes);
+
+    /// <summary>
+    /// Builds "every N minutes" without producing an expression that cannot be parsed.
+    /// </summary>
+    /// <remarks>
+    /// The obvious <c>*/N * * * *</c> holds only while N fits in the minutes field.
+    /// At 60 it asks for a step of 60 across a range of 0-59, and Cronos — the
+    /// parser Hangfire uses — rejects that outright. The throw lands in
+    /// <c>AddOrUpdate</c> during startup, which runs before Kestrel begins
+    /// listening: the whole API fails to come up. Not a broken schedule, a process
+    /// that exited. No endpoints, no swagger, no login, and nothing in the browser
+    /// to suggest the cause.
+    ///
+    /// So an hour or more is expressed in the hours field instead. Intervals that
+    /// are not a whole number of hours round down to the hour, which is close
+    /// enough for a polling schedule and keeps the expression truthful.
+    /// </remarks>
+    internal static string BuildCron(int minutes) =>
+        minutes < 60
+            ? $"*/{minutes} * * * *"
+            : $"0 */{Math.Clamp(minutes / 60, 1, 23)} * * *";
 }
