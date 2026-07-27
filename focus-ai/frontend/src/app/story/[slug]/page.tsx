@@ -9,6 +9,7 @@ import { StoryCard, StoryCardSkeleton } from '@/components/StoryCard';
 import { CommitmentPanel, CorroborationNote } from '@/components/CommitmentBadge';
 import { CoverageComparison } from '@/components/CoverageComparison';
 import { FeedbackButtons } from '@/components/FeedbackButtons';
+import { LearnButton } from '@/components/LearnButton';
 import { ShareButton } from '@/components/ShareButton';
 import { StoryTimeline } from '@/components/StoryTimeline';
 import { StoryVisual } from '@/components/StoryVisual';
@@ -273,6 +274,8 @@ export default function StoryPage() {
           />
         )
       )}
+
+      {user && <LearnButton storyId={story.id} />}
 
       {story.timeline && <StoryTimeline timeline={story.timeline} />}
 
