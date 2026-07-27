@@ -8,7 +8,7 @@ import { SpeechPlayer } from '@/components/SpeechPlayer';
 import { StoryCard, StoryCardSkeleton } from '@/components/StoryCard';
 import { api } from '@/lib/api';
 import { CATEGORY_EMOJI, CATEGORY_LABELS, formatDayHeading, readingTime } from '@/lib/format';
-import type { ContentCategory, Digest, StoryCard as Story } from '@/lib/types';
+import type { ContentCategory, Digest, StoryCard as Story, UnreadCount } from '@/lib/types';
 
 /** The category shortcuts from PRD section 7. */
 const SHORTCUTS: { category: ContentCategory; href: string }[] = [
@@ -26,6 +26,7 @@ export default function HomePage() {
   const { user, loading: authLoading } = useAuth();
   const [digest, setDigest] = useState<Digest | null>(null);
   const [top, setTop] = useState<Story | null>(null);
+  const [unread, setUnread] = useState<UnreadCount | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,14 +35,17 @@ export default function HomePage() {
     setError(null);
 
     try {
-      // Both are independent; a slow digest should not delay the hero.
-      const [digestResult, topResult] = await Promise.all([
+      // All independent; a slow digest should not delay the hero, and the tally at
+      // the foot of the page should not be able to hold up either of them.
+      const [digestResult, topResult, unreadResult] = await Promise.all([
         api.digest.get('Daily').catch(() => undefined),
         api.stories.top(36).catch(() => undefined),
+        user ? api.stories.unreadCount().catch(() => undefined) : undefined,
       ]);
 
       setDigest(digestResult ?? null);
       setTop(topResult ?? null);
+      setUnread(unreadResult ?? null);
     } catch {
       setError('İçerikler yüklenemedi. Bağlantını kontrol edip tekrar dene.');
     } finally {
@@ -169,6 +173,36 @@ export default function HomePage() {
             }
           />
         )
+      )}
+
+      {/*
+        The tally, at the foot of the page.
+
+        Counted over the whole feed rather than the cards above it: the day's
+        digest is a selection, and a reader who has finished it is entitled to
+        know what that leaves. The total travels with the count because "142
+        okunmamış" means one thing against 150 stories and another against 4000.
+
+        Signed-out readers get nothing — there is no read history to count
+        against, so any number here would be a fiction.
+      */}
+      {unread && (
+        <p className="px-4 pb-2 text-center text-[13px] text-ink-500 dark:text-ink-400 sm:px-5">
+          {unread.unread > 0 ? (
+            <>
+              Feed&apos;de{' '}
+              <strong className="font-semibold text-ink-700 dark:text-ink-200">
+                {unread.unread.toLocaleString('tr-TR')}
+              </strong>{' '}
+              okunmamış haber var{' '}
+              <span className="text-ink-400 dark:text-ink-500">
+                ({unread.total.toLocaleString('tr-TR')} haberin içinde)
+              </span>
+            </>
+          ) : (
+            'Feed’de okunmamış haber kalmadı.'
+          )}
+        </p>
       )}
     </div>
   );

@@ -157,6 +157,15 @@ public sealed record StoryCardDto
 }
 
 /// <summary>Everything the detail page in PRD section 8 renders.</summary>
+/// <summary>
+/// How much of the feed is still unopened, and how big the feed is.
+/// </summary>
+/// <remarks>
+/// The total travels with the count because the count alone says nothing: "142
+/// unread" reads very differently against 150 stories than against 4000.
+/// </remarks>
+public sealed record UnreadCountDto(int Unread, int Total);
+
 public sealed record StoryDetailDto
 {
     public required Guid Id { get; init; }

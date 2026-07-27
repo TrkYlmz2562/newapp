@@ -209,6 +209,17 @@ export interface StoryDetail {
   personalNote?: string | null;
 }
 
+/**
+ * How much of the feed the reader has not opened yet.
+ *
+ * `total` travels with it because the count alone says nothing: 142 unread reads
+ * very differently against 150 stories than against 4000.
+ */
+export interface UnreadCount {
+  unread: number;
+  total: number;
+}
+
 export interface Paged<T> {
   items: T[];
   page: number;

@@ -1,3 +1,4 @@
+using FocusAI.Application.Common.Exceptions;
 using FocusAI.Application.Common.Interfaces;
 using FocusAI.Application.Common.Mappings;
 using FocusAI.Application.Common.Models;
@@ -9,6 +10,54 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace FocusAI.Application.Features.Stories;
+
+/// <summary>
+/// How much of the feed the reader has not opened yet.
+/// </summary>
+/// <remarks>
+/// Counted over the whole visible feed rather than the page on screen: the reader
+/// asking this wants to know what is left, and a number that only described the
+/// twenty cards they can already see would be answering a question nobody asked.
+///
+/// Deliberately not personalised. The ranker suppresses and reorders, and running
+/// it to produce a count would cost a full ranking pass to answer a footnote —
+/// and would then report a smaller feed than Keşfet visibly contains.
+/// </remarks>
+public sealed record GetUnreadCountQuery : IRequest<UnreadCountDto>;
+
+public sealed class GetUnreadCountQueryHandler(
+    IApplicationDbContext db,
+    ICurrentUser currentUser) : IRequestHandler<GetUnreadCountQuery, UnreadCountDto>
+{
+    public async Task<UnreadCountDto> Handle(
+        GetUnreadCountQuery request,
+        CancellationToken cancellationToken)
+    {
+        if (currentUser.UserId is not { } userId)
+        {
+            throw new UnauthorizedException();
+        }
+
+        var feed = db.Stories
+            .AsNoTracking()
+            .Where(s => s.Status == StoryStatus.Published)
+            .Where(StoryFilters.VisibleToReaders);
+
+        var total = await feed.CountAsync(cancellationToken);
+
+        // Opening it is what "read" means, the same test the card badge and the
+        // ranker apply. One NOT EXISTS rather than pulling the interaction rows
+        // back: the reader may have thousands and we want a number.
+        var unread = await feed.CountAsync(
+            s => !db.Interactions.Any(i =>
+                i.UserId == userId &&
+                i.StoryId == s.Id &&
+                (i.Type == InteractionType.Open || i.Type == InteractionType.ReadComplete)),
+            cancellationToken);
+
+        return new UnreadCountDto(unread, total);
+    }
+}
 
 /// <summary>
 /// The Home and Explore feeds. Personalised for signed-in readers, ranked purely
@@ -164,6 +213,11 @@ public sealed class GetStoryFeedQueryHandler(
     /// <see cref="StoryProjections.ToCard"/> because a `with` expression is
     /// illegal inside an expression tree.
     /// </summary>
+    /// <remarks>
+    /// Kept in step with <see cref="GetUnreadCountQueryHandler"/>: both call a
+    /// story read on the same interaction types, because a badge saying "okundu"
+    /// over a tally that still counts it would be worse than either being wrong.
+    /// </remarks>
     private async Task<PagedResult<StoryCardDto>> AttachReaderState(
         PagedResult<StoryCardDto> result,
         Guid? userId,

@@ -18,6 +18,7 @@ import type {
   StorySpeech,
   Topic,
   Trend,
+  UnreadCount,
   User,
 } from './types';
 
@@ -231,6 +232,9 @@ export const api = {
     } = {}) => request<Paged<StoryCard>>(`/api/stories${qs(params)}`),
 
     top: (withinHours = 24) => request<StoryCard | undefined>(`/api/stories/top${qs({ withinHours })}`),
+
+    /** How much of the feed is still unopened. Signed-in readers only. */
+    unreadCount: () => request<UnreadCount>('/api/stories/unread-count'),
 
     detail: (slug: string, token?: string) =>
       request<StoryDetail>(`/api/stories/${encodeURIComponent(slug)}`, { token }),
