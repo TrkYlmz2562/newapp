@@ -10,22 +10,59 @@ import type { SpeechChunk } from './types';
  * singleton: two components each holding their own queue would interleave into
  * one voice reading two things. Everything that wants to speak goes through here.
  *
- * The browser's own API is used rather than a server-side engine because it is
- * the only option that works where this app is actually read — a plain-HTTP
- * Tailscale address, which is not a secure context. Unlike the clipboard and the
- * service worker, `speechSynthesis` carries no secure-context requirement, so it
- * is available where the alternatives are not. The trade-off is that playback
- * stops when the screen locks: this is not an <audio> element, so there is no
- * MediaSession and no background audio.
+ * There are two engines behind this, and the reader is never asked to choose.
+ *
+ * The first is a file rendered on the server and played through an <audio>
+ * element. That is what makes the lock screen work — the operating system will
+ * keep an element playing and put controls on the lock screen, and it will do
+ * neither for `speechSynthesis`, which it does not consider media at all.
+ *
+ * The second is the device's own voice, which is what runs when there is no
+ * rendering to play: no key configured, the day's allowance spent, a story whose
+ * synthesis failed. It needs no key, no quota and no network, and it carries no
+ * secure-context requirement — which matters, because this app is read over a
+ * plain-HTTP Tailscale address where the clipboard and the service worker are
+ * both unavailable.
+ *
+ * Falling back is automatic and silent by design. A reader whose quota ran out
+ * mid-morning should notice the voice change, not find a button that does nothing.
  */
 
 export type SpeechStatus = 'idle' | 'speaking' | 'paused' | 'ended';
 
+/**
+ * Which engine is actually producing the sound.
+ *
+ * `audio` is a file rendered on the server: it sounds like a person, it obeys
+ * playbackRate without restarting, and because it is an <audio> element the
+ * operating system will keep it playing with the screen locked and put it on the
+ * lock screen. `device` is the browser's own speech synthesis, which does none of
+ * those things but needs no key, no quota and no network.
+ *
+ * The reader is never asked to choose. Server audio is tried first and the device
+ * voice is what happens when it is unavailable — no key configured, the day's
+ * allowance spent, or a story whose rendering failed.
+ */
+export type SpeechEngine = 'audio' | 'device';
+
 export interface SpeechSnapshot {
   status: SpeechStatus;
-  /** Index of the utterance being spoken, or -1 when idle. */
+  /** Which engine is producing the sound. */
+  engine: SpeechEngine;
+  /** Index of the utterance being spoken, or -1 when idle. Device engine only. */
   index: number;
   total: number;
+  /** Seconds played and total seconds. Both 0 unless the engine is `audio`. */
+  position: number;
+  duration: number;
+  /**
+   * How far through, 0 to 1, whichever engine is running.
+   *
+   * The two engines measure progress in different units — one knows sentences and
+   * the other knows seconds — and every caller that draws a bar wants the same
+   * number. Computed here so no component has to know which engine it is watching.
+   */
+  progress: number;
   rate: number;
   voiceUri: string | null;
   /** Turkish voices the device actually has. Empty means the feature is unusable. */
@@ -97,6 +134,17 @@ class SpeechController {
   private owner: string | null = null;
   private queueIndex = 0;
   private queueTotal = 0;
+  private engine: SpeechEngine = 'device';
+
+  /**
+   * The one audio element, reused for every story.
+   *
+   * Created on the first play rather than at module load, and never replaced: iOS
+   * only lets an element play if its *first* play() came from a user gesture, and
+   * a fresh element per story would need a fresh gesture per story. Reusing this
+   * one is what lets the day's queue advance on its own.
+   */
+  private audio: HTMLAudioElement | null = null;
   private index = -1;
   private status: SpeechStatus = 'idle';
   private rate = 1;
@@ -118,7 +166,21 @@ class SpeechController {
 
   private onFinished: (() => void) | null = null;
 
+  /**
+   * Whether reading aloud is possible at all.
+   *
+   * Broader than it used to be, and it has to be: this once meant "the browser has
+   * speechSynthesis", which was the only engine there was. Now the main engine is
+   * an audio file, and every browser can play one — so gating the feature on the
+   * device's speech support would hide the better path on exactly the devices that
+   * need it, which is what iOS looked like before the server started rendering.
+   */
   get supported(): boolean {
+    return typeof window !== 'undefined';
+  }
+
+  /** Whether the device can read to us itself, which is the fallback path. */
+  get deviceSupported(): boolean {
     return typeof window !== 'undefined' && 'speechSynthesis' in window;
   }
 
@@ -147,8 +209,12 @@ class SpeechController {
     // when something actually changed.
     this.snapshot ??= {
       status: this.status,
+      engine: this.engine,
       index: this.index,
       total: this.chunks.length,
+      position: this.audioPosition,
+      duration: this.audioDuration,
+      progress: this.computeProgress(),
       rate: this.rate,
       voiceUri: this.voice?.voiceURI ?? null,
       turkishVoices: this.voices.filter(isTurkish),
@@ -168,12 +234,39 @@ class SpeechController {
     return SERVER_SNAPSHOT;
   }
 
+  private get audioPosition(): number {
+    return this.engine === 'audio' && this.audio ? this.audio.currentTime : 0;
+  }
+
+  private get audioDuration(): number {
+    // Infinity and NaN both appear before metadata has loaded, and both would
+    // render as a bar of unknown width or a time of "NaN:aN".
+    const duration = this.engine === 'audio' && this.audio ? this.audio.duration : 0;
+    return Number.isFinite(duration) ? duration : 0;
+  }
+
+  private computeProgress(): number {
+    if (this.engine === 'audio') {
+      return this.audioDuration > 0 ? Math.min(1, this.audioPosition / this.audioDuration) : 0;
+    }
+
+    return this.chunks.length > 0 ? (this.index + 1) / this.chunks.length : 0;
+  }
+
   setRate(rate: number): void {
     const next = Math.min(MAX_RATE, Math.max(MIN_RATE, rate));
     if (next === this.rate) return;
 
     this.rate = next;
     remember(RATE_KEY, String(next));
+
+    // A file can simply be played faster, with no gap and nothing repeated.
+    if (this.engine === 'audio' && this.audio) {
+      this.audio.playbackRate = next;
+      this.emit();
+      return;
+    }
+
     this.emit();
 
     // Rate is fixed when an utterance starts and cannot be changed mid-flight, so
@@ -208,9 +301,14 @@ class SpeechController {
       owner?: string;
       onFinished?: () => void;
       queue?: { index: number; total: number };
+      /**
+       * Where the server's rendering of this story lives, when there is one.
+       * Tried first; the chunks above are what happens if it will not play.
+       */
+      audioUrl?: string;
     } = {},
   ): void {
-    if (!this.supported || chunks.length === 0) return;
+    if (chunks.length === 0) return;
 
     this.loadVoices();
     this.chunks = chunks;
@@ -219,11 +317,137 @@ class SpeechController {
     this.onFinished = options.onFinished ?? null;
     this.queueIndex = options.queue?.index ?? 0;
     this.queueTotal = options.queue?.total ?? 0;
+
+    if (options.audioUrl) {
+      this.playAudio(options.audioUrl);
+      return;
+    }
+
+    if (!this.deviceSupported) return;
+    this.engine = 'device';
     this.speakFrom(0);
   }
 
+  /**
+   * Plays the server's rendering, falling back to the device voice if it will not.
+   *
+   * The fallback is the whole reason the script is fetched even when audio is
+   * expected: a 404 from a story whose rendering failed, or a day whose allowance
+   * ran out, has to become a different voice rather than a dead button — and by
+   * then the gesture that authorised playback is long gone, so there is no chance
+   * to go and fetch anything.
+   */
+  private playAudio(url: string): void {
+    this.generation++;
+    const generation = this.generation;
+
+    window.speechSynthesis?.cancel();
+    this.stopKeepAlive();
+
+    const audio = this.ensureAudio();
+
+    this.engine = 'audio';
+    this.index = -1;
+    this.status = 'speaking';
+    this.emit();
+
+    audio.src = url;
+    audio.playbackRate = this.rate;
+    audio.currentTime = 0;
+
+    void audio.play().catch(() => {
+      if (generation !== this.generation) return;
+      this.fallBackToDevice();
+    });
+  }
+
+  private fallBackToDevice(): void {
+    if (!this.deviceSupported || this.chunks.length === 0) {
+      this.status = 'idle';
+      this.emit();
+      return;
+    }
+
+    this.engine = 'device';
+    this.speakFrom(0);
+  }
+
+  private ensureAudio(): HTMLAudioElement {
+    if (this.audio) return this.audio;
+
+    const audio = new Audio();
+    audio.preload = 'auto';
+
+    audio.addEventListener('timeupdate', () => this.emit());
+    audio.addEventListener('loadedmetadata', () => {
+      this.emit();
+      this.publishMediaSession();
+    });
+    audio.addEventListener('ended', () => {
+      if (this.engine !== 'audio') return;
+      this.status = 'ended';
+      this.emit();
+      this.onFinished?.();
+    });
+    audio.addEventListener('error', () => {
+      // A rendering that will not load is the expected shape of "no quota today".
+      if (this.engine !== 'audio' || this.status === 'idle') return;
+      this.fallBackToDevice();
+    });
+
+    this.audio = audio;
+    return audio;
+  }
+
+  /**
+   * Hands the lock screen a title and working buttons.
+   *
+   * Only ever set for the audio engine. speechSynthesis is not media playback as
+   * far as the operating system is concerned — there is no element to attach to —
+   * so a MediaSession registered for it would show a card whose controls do
+   * nothing.
+   */
+  private publishMediaSession(): void {
+    if (typeof navigator === 'undefined' || !('mediaSession' in navigator)) return;
+    if (this.engine !== 'audio') return;
+
+    const session = navigator.mediaSession;
+
+    session.metadata = new MediaMetadata({
+      title: this.title ?? 'Focus AI',
+      artist: this.queueTotal > 1 ? `${this.queueIndex}/${this.queueTotal} haber` : 'Focus AI',
+      album: 'Focus AI',
+    });
+
+    session.setActionHandler('play', () => this.resume());
+    session.setActionHandler('pause', () => this.pause());
+    session.setActionHandler('stop', () => this.stop());
+    session.setActionHandler('seekbackward', () => this.seekBy(-15));
+    session.setActionHandler('seekforward', () => this.seekBy(15));
+  }
+
+  /** Nudges the playhead. Audio engine only; the device voice cannot seek. */
+  seekBy(seconds: number): void {
+    if (this.engine !== 'audio' || !this.audio) return;
+
+    const duration = this.audioDuration;
+    const target = this.audio.currentTime + seconds;
+    this.audio.currentTime = Math.max(0, duration > 0 ? Math.min(duration, target) : target);
+    this.emit();
+  }
+
   resume(): void {
-    if (!this.supported) return;
+    if (this.engine === 'audio' && this.audio) {
+      // A finished reading starts over; a paused one carries on.
+      if (this.status === 'ended') this.audio.currentTime = 0;
+
+      this.status = 'speaking';
+      this.emit();
+      void this.audio.play().catch(() => this.fallBackToDevice());
+      return;
+    }
+
+    if (!this.deviceSupported) return;
 
     if (this.status === 'paused') {
       window.speechSynthesis.resume();
@@ -240,7 +464,16 @@ class SpeechController {
   }
 
   pause(): void {
-    if (!this.supported || this.status !== 'speaking') return;
+    if (this.status !== 'speaking') return;
+
+    if (this.engine === 'audio' && this.audio) {
+      this.audio.pause();
+      this.status = 'paused';
+      this.emit();
+      return;
+    }
+
+    if (!this.deviceSupported) return;
 
     window.speechSynthesis.pause();
     this.status = 'paused';
@@ -249,12 +482,28 @@ class SpeechController {
   }
 
   stop(): void {
-    if (!this.supported) return;
-
     this.generation++;
-    window.speechSynthesis.cancel();
+
+    if (this.audio) {
+      this.audio.pause();
+      // Released so the browser stops holding the file and the lock-screen card
+      // goes away; the element itself is kept, because its gesture permission is.
+      this.audio.removeAttribute('src');
+      this.audio.load();
+    }
+
+    if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
+      navigator.mediaSession.metadata = null;
+      navigator.mediaSession.playbackState = 'none';
+    }
+
+    if (this.deviceSupported) {
+      window.speechSynthesis.cancel();
+    }
+
     this.stopKeepAlive();
 
+    this.engine = 'device';
     this.status = 'idle';
     this.index = -1;
     this.chunks = [];
@@ -267,6 +516,13 @@ class SpeechController {
   }
 
   skip(offset: number): void {
+    // The audio engine has no sentences to step through; fifteen seconds is the
+    // nearest honest equivalent, and it is what the lock screen offers too.
+    if (this.engine === 'audio') {
+      this.seekBy(offset * 15);
+      return;
+    }
+
     if (this.chunks.length === 0) return;
 
     const target = this.index + offset;
@@ -276,7 +532,7 @@ class SpeechController {
   }
 
   private speakFrom(start: number): void {
-    if (!this.supported) return;
+    if (!this.deviceSupported) return;
 
     this.generation++;
     const generation = this.generation;
@@ -358,7 +614,7 @@ class SpeechController {
   }
 
   private loadVoices(): void {
-    if (!this.supported) return;
+    if (!this.deviceSupported) return;
 
     const apply = () => {
       const voices = window.speechSynthesis.getVoices();
@@ -412,8 +668,12 @@ class SpeechController {
 
 const SERVER_SNAPSHOT: SpeechSnapshot = {
   status: 'idle',
+  engine: 'device',
   index: -1,
   total: 0,
+  position: 0,
+  duration: 0,
+  progress: 0,
   rate: 1,
   voiceUri: null,
   turkishVoices: [],

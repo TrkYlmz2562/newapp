@@ -245,6 +245,17 @@ export const api = {
     top: (withinHours = 24) => request<StoryCard | undefined>(`/api/stories/top${qs({ withinHours })}`),
 
     /**
+     * Where the server's rendering of a story lives.
+     *
+     * A URL rather than a fetch: it goes straight onto an <audio> element, so the
+     * browser streams it, caches it and can range-request it — none of which
+     * happens if it is pulled through fetch into memory first. A 404 is the
+     * ordinary answer for "no key, no quota, or nothing usable back from the
+     * model", and the player reads it as a cue to use the device voice.
+     */
+    audioUrl: (slug: string) => `${API_BASE}/api/stories/${encodeURIComponent(slug)}/speech/audio`,
+
+    /**
      * How much of the feed is still unopened. Signed-in readers only.
      * `category` narrows it to one Keşfet tab; omit it for the whole feed.
      */

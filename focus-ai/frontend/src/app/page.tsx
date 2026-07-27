@@ -128,7 +128,6 @@ export default function HomePage() {
             <SpeechPlayer
               sources={listenQueue}
               label={`Günü dinle · ${listenQueue.length} haber`}
-              quiet
             />
           )}
 

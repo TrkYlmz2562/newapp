@@ -3,7 +3,6 @@
 import { useCallback, useId, useRef, useState } from 'react';
 import { api, describeError } from '@/lib/api';
 import { speech, useSpeech } from '@/lib/speech';
-import { VoiceSetupHelp } from './VoiceSetupHelp';
 
 export interface SpeechSource {
   slug: string;
@@ -33,18 +32,11 @@ export function SpeechPlayer({
   sources,
   label,
   className = '',
-  quiet = false,
   variant = 'pill',
 }: {
   sources: SpeechSource[];
   label?: string;
   className?: string;
-  /**
-   * Render nothing when the device has no Turkish voice, instead of the setup
-   * panel. For the feed: a reader who never wanted audio should not have the top
-   * of their day taken by instructions for a feature they did not ask about.
-   */
-  quiet?: boolean;
   /**
    * `round` is the big circle that anchors the top of a story — glyph only, no
    * label, sized to read as the primary action next to the icon row above it.
@@ -83,6 +75,11 @@ export function SpeechPlayer({
         speech.play(script.chunks, {
           title: script.title,
           owner: id,
+          // Handed over even when the rendering is expected to work: if it 404s
+          // the engine falls back to reading these chunks aloud, and by then the
+          // gesture that authorised playback is gone, so there is no second
+          // chance to fetch them.
+          audioUrl: api.stories.audioUrl(list[index].slug),
           queue: list.length > 1 ? { index: index + 1, total: list.length } : undefined,
           onFinished: () => {
             // Chained here rather than by concatenating every script up front:
@@ -105,15 +102,20 @@ export function SpeechPlayer({
 
   if (!state.supported) return null;
 
-  // Still resolving the voice list — Safari hands it over asynchronously, and
-  // offering a play button that would fail is worse than a moment of nothing.
-  if (!state.ready) {
-    return <div className={`skeleton rounded-full ${round ? 'h-16 w-16' : 'h-9 w-32'} ${className}`} />;
-  }
-
-  if (state.turkishVoices.length === 0) {
-    return quiet || round ? null : <VoiceSetupHelp className={className} />;
-  }
+  /*
+   * No longer gated on the device having a Turkish voice.
+   *
+   * That check made sense when the device's voice was the only engine: a play
+   * button that could only produce English vowels reading Turkish suffixes was
+   * worse than no button. The server renders the audio now, and it does so on
+   * exactly the devices that have no usable voice of their own — so waiting for
+   * a voice list, or hiding the control when it comes back empty, would withhold
+   * the feature from the readers it was built for.
+   *
+   * VoiceSetupHelp still exists and still says something true; it is shown by
+   * VoiceSetupNotice further down the page, where it does not stand between the
+   * reader and a button that works.
+   */
 
   const toggle = () => {
     if (speaking) {

@@ -18,6 +18,14 @@ import { SPEECH_RATES, speech, useSpeech } from '@/lib/speech';
  * pause, stop. Speed, sentence skip and voice are a tap away rather than on
  * screen, because they are set once and then never touched again.
  */
+/** Seconds as m:ss. Unknown durations read as 0:00 rather than NaN. */
+function clock(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
+
+  const total = Math.floor(seconds);
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+}
+
 export function SpeechDock() {
   const state = useSpeech();
   const [expanded, setExpanded] = useState(false);
@@ -67,7 +75,11 @@ export function SpeechDock() {
 
   const speaking = state.status === 'speaking';
   const ended = state.status === 'ended';
-  const progress = state.total > 0 ? (state.index + 1) / state.total : 0;
+  const onAudio = state.engine === 'audio';
+
+  // One number for two engines: the controller reconciles sentences and seconds
+  // so nothing here has to know which is playing.
+  const progress = state.progress;
 
   const toggle = () => {
     if (speaking) {
@@ -98,8 +110,8 @@ export function SpeechDock() {
             className="h-full bg-focus-600 transition-[width] duration-300 dark:bg-focus-400"
             role="progressbar"
             aria-valuemin={0}
-            aria-valuemax={state.total}
-            aria-valuenow={state.index + 1}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(progress * 100)}
             style={{ width: `${progress * 100}%` }}
           />
         </div>
@@ -147,7 +159,11 @@ export function SpeechDock() {
               {state.title ?? 'Sesli okuma'}
             </p>
             <p className="mt-0.5 font-mono text-[11px] text-ink-400 dark:text-ink-500">
-              {ended ? 'bitti' : `${state.index + 1}/${state.total} cümle`}
+              {ended
+                ? 'bitti'
+                : onAudio
+                  ? `${clock(state.position)} / ${clock(state.duration)}`
+                  : `${state.index + 1}/${state.total} cümle`}
               {state.queueTotal > 1 && ` · ${state.queueIndex}/${state.queueTotal} haber`}
               {state.rate !== 1 && ` · ${state.rate.toLocaleString('tr-TR')}×`}
             </p>
@@ -196,23 +212,26 @@ export function SpeechDock() {
         {expanded && (
           <div className="border-t border-ink-200/70 px-2.5 pb-2.5 pt-2 dark:border-ink-800">
             <div className="flex items-center gap-2">
+              {/* A file has no sentences to step through, so the same two buttons
+                  move fifteen seconds instead — which is also what the lock
+                  screen offers, so the two agree. */}
               <button
                 type="button"
                 onClick={() => speech.skip(-1)}
-                disabled={state.index <= 0}
+                disabled={!onAudio && state.index <= 0}
                 className="tap-row rounded-lg px-2 py-1 font-mono text-[11px] text-ink-500 transition
                            hover:bg-ink-100 disabled:opacity-30 dark:text-ink-400 dark:hover:bg-ink-800"
               >
-                ‹ cümle
+                {onAudio ? '‹ 15 sn' : '‹ cümle'}
               </button>
               <button
                 type="button"
                 onClick={() => speech.skip(1)}
-                disabled={state.index >= state.total - 1}
+                disabled={!onAudio && state.index >= state.total - 1}
                 className="tap-row rounded-lg px-2 py-1 font-mono text-[11px] text-ink-500 transition
                            hover:bg-ink-100 disabled:opacity-30 dark:text-ink-400 dark:hover:bg-ink-800"
               >
-                cümle ›
+                {onAudio ? '15 sn ›' : 'cümle ›'}
               </button>
             </div>
 
@@ -243,7 +262,14 @@ export function SpeechDock() {
                 {trUpper('ses')}
               </span>
 
-              {state.turkishVoices.length > 1 ? (
+              {/* The device's voice list has nothing to say about a file the
+                  server rendered. Showing a picker that cannot change what is
+                  playing would be worse than showing nothing. */}
+              {onAudio ? (
+                <span className="min-w-0 flex-1 truncate text-[13px] text-ink-700 dark:text-ink-200">
+                  Focus AI
+                </span>
+              ) : state.turkishVoices.length > 1 ? (
                 <select
                   value={state.voiceUri ?? ''}
                   onChange={(event) => speech.setVoice(event.target.value)}
@@ -264,7 +290,7 @@ export function SpeechDock() {
               )}
             </div>
 
-            {state.turkishVoices.length === 1 && hasRestrictedVoiceList(platform) && (
+            {!onAudio && state.turkishVoices.length === 1 && hasRestrictedVoiceList(platform) && (
               <p className="mt-1.5 text-[12px] leading-relaxed text-ink-500 dark:text-ink-400">
                 Bu cihazın tarayıcısına tek Türkçe ses açılıyor. Ayarlar'daki Siri sesleri
                 ve indirilebilir kaliteli sesler web'e kapalı.
