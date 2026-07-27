@@ -1,5 +1,6 @@
 using FocusAI.Application.Common.Exceptions;
 using FocusAI.Application.Common.Interfaces;
+using FocusAI.Application.Common.Mappings;
 using FocusAI.Application.Dtos;
 using FocusAI.Domain.Entities.Content;
 using FocusAI.Domain.Entities.Learning;
