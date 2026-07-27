@@ -8,6 +8,7 @@ using FocusAI.Infrastructure.Persistence;
 using FocusAI.Infrastructure.Persistence.Interceptors;
 using FocusAI.Infrastructure.Search;
 using FocusAI.Infrastructure.Services;
+using FocusAI.Infrastructure.Speech;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,6 +28,18 @@ public static class DependencyInjection
         services.Configure<TranslationOptions>(configuration.GetSection(TranslationOptions.SectionName));
         services.Configure<SearchOptions>(configuration.GetSection(SearchOptions.SectionName));
         services.Configure<IngestionOptions>(configuration.GetSection(IngestionOptions.SectionName));
+
+        services.Configure<SpeechOptions>(configuration.GetSection(SpeechOptions.SectionName));
+        services.PostConfigure<SpeechOptions>(speech =>
+        {
+            // Both are Gemini keys. Making the reader paste the same value into a
+            // second setting to turn on a second Gemini feature is a configuration
+            // step that exists only because the code did not look next door.
+            if (string.IsNullOrWhiteSpace(speech.ApiKey))
+            {
+                speech.ApiKey = configuration[$"{LlmOptions.SectionName}:Providers:Gemini:ApiKey"] ?? string.Empty;
+            }
+        });
         services.Configure<Application.Common.Options.IngestionSettings>(
             configuration.GetSection(Application.Common.Options.IngestionSettings.SectionName));
 
@@ -108,6 +121,22 @@ public static class DependencyInjection
                 options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(240);
                 options.Retry.MaxRetryAttempts = 2;
             });
+
+        services.AddHttpClient(SpeechOptions.HttpClientName, (provider, client) =>
+        {
+            var speech = provider.GetRequiredService<IOptions<SpeechOptions>>().Value;
+            var baseUrl = string.IsNullOrWhiteSpace(speech.BaseUrl)
+                ? "https://generativelanguage.googleapis.com/"
+                : speech.BaseUrl;
+
+            client.BaseAddress = new Uri(baseUrl.EndsWith('/') ? baseUrl : baseUrl + "/");
+            // Rendering a couple of minutes of speech is slow, and the response is
+            // the whole file rather than a stream, so it all arrives at the end.
+            client.Timeout = TimeSpan.FromSeconds(Math.Clamp(speech.TimeoutSeconds, 15, 600));
+        });
+
+        services.AddSingleton<ISpeechAudioCache, FileSpeechAudioCache>();
+        services.AddScoped<ISpeechSynthesizer, GeminiSpeechSynthesizer>();
 
         services.AddSingleton<ILlmClientFactory, LlmClientFactory>();
         services.AddScoped<IContentAiService, ContentAiService>();

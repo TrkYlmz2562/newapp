@@ -65,6 +65,33 @@ public static class StoryEndpoints
             .Produces<StoryDetailDto>()
             .AllowAnonymous();
 
+        /*
+         * The story read aloud, as a file.
+         *
+         * 404 when there is no audio to give — no key, no quota left, nothing
+         * usable back from the model. That is not an error the reader should see:
+         * the player treats it as "use the device voice instead", which is the
+         * same thing it does on a device that never had server audio at all.
+         *
+         * Anonymous, like the script beside it. The bytes are a rendering of a
+         * public story, and the rendering is cached, so a signed-out listener
+         * costs nothing that a signed-in one would not.
+         */
+        group.MapGet("/{slug}/speech/audio", async (
+                string slug,
+                [FromQuery] string? voice,
+                ISender sender,
+                CancellationToken ct) =>
+            {
+                var audio = await sender.Send(new GetStoryAudioQuery(slug, voice), ct);
+
+                return audio is null
+                    ? Results.NotFound()
+                    : Results.File(audio.Audio, audio.ContentType, audio.FileName, enableRangeProcessing: true);
+            })
+            .WithSummary("Haberin sunucuda üretilmiş sesli okuması.")
+            .AllowAnonymous();
+
         // Its own route rather than a field on the detail response: the script is
         // a second copy of the story's text, and most readers never press play.
         group.MapGet("/{slug}/speech", async (string slug, ISender sender, CancellationToken ct) =>

@@ -139,6 +139,55 @@ public sealed class SearchOptions
     public string IndexName { get; set; } = "stories";
 }
 
+/// <summary>
+/// Reading stories aloud on the server.
+/// </summary>
+/// <remarks>
+/// Off unless a key is present, and the device's own voice is what runs in its
+/// place — so an unconfigured install still has audio, just a worse one.
+/// </remarks>
+public sealed class SpeechOptions
+{
+    public const string SectionName = "Speech";
+
+    /// <summary>Named client so the base address and timeout live in one place.</summary>
+    public const string HttpClientName = "gemini-speech";
+
+    public bool Enabled { get; set; } = true;
+
+    /// <summary>Falls back to the Gemini LLM key when left empty; see DependencyInjection.</summary>
+    public string ApiKey { get; set; } = string.Empty;
+
+    public string BaseUrl { get; set; } = "https://generativelanguage.googleapis.com/";
+
+    /// <summary>
+    /// The flash model, deliberately. Pro sounds a little better and has no free
+    /// allowance at all, which is the wrong trade for reading the news.
+    /// </summary>
+    public string Model { get; set; } = "gemini-2.5-flash-preview-tts";
+
+    /// <summary>One of the API's prebuilt voice names.</summary>
+    public string Voice { get; set; } = "Kore";
+
+    /// <summary>What the model emits: 24 kHz, 16-bit, mono.</summary>
+    public int SampleRate { get; set; } = 24_000;
+
+    /// <summary>
+    /// Refuses scripts longer than this rather than discovering the session limit
+    /// by spending quota on it.
+    /// </summary>
+    public int MaxCharacters { get; set; } = 6_000;
+
+    public int TimeoutSeconds { get; set; } = 180;
+
+    /// <summary>
+    /// Where rendered readings are kept. Relative paths resolve against the content
+    /// root. In Docker this wants to be a mounted volume — a cache that dies with
+    /// the container spends the daily allowance again on every deploy.
+    /// </summary>
+    public string CacheDirectory { get; set; } = "speech-cache";
+}
+
 public sealed class IngestionOptions
 {
     public const string SectionName = "Ingestion";
