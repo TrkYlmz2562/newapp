@@ -1,4 +1,5 @@
 using FocusAI.Domain.Enums;
+using FocusAI.Domain.Speech;
 using FocusAI.Domain.Text;
 using FocusAI.Domain.Timeline;
 
@@ -237,3 +238,19 @@ public sealed record ComparisonPointDto(
     IReadOnlyList<string> Sources,
     string Quote,
     string QuoteSource);
+
+/// <summary>
+/// A story rewritten for a speech engine, split into utterances.
+/// </summary>
+/// <remarks>
+/// Separate from <see cref="StoryDetailDto"/> because it is a second copy of the
+/// story's text and most readers never ask for it.
+/// </remarks>
+public sealed record StorySpeechDto(
+    Guid StoryId,
+    string Slug,
+    string Title,
+    int EstimatedSeconds,
+    IReadOnlyList<SpeechChunkDto> Chunks);
+
+public sealed record SpeechChunkDto(string Text, SpeechChunkKind Kind);

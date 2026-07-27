@@ -54,6 +54,14 @@ public static class StoryEndpoints
             .Produces<StoryDetailDto>()
             .AllowAnonymous();
 
+        // Its own route rather than a field on the detail response: the script is
+        // a second copy of the story's text, and most readers never press play.
+        group.MapGet("/{slug}/speech", async (string slug, ISender sender, CancellationToken ct) =>
+                Results.Ok(await sender.Send(new GetStorySpeechQuery(slug), ct)))
+            .WithSummary("Haberin sesli okuma metni, cümlelere bölünmüş.")
+            .Produces<StorySpeechDto>()
+            .AllowAnonymous();
+
         group.MapPost("/{storyId:guid}/interactions", async (
                 Guid storyId,
                 InteractionRequest request,
