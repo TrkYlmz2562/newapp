@@ -90,6 +90,29 @@ public sealed record LearningSuggestionDto(
 
 public sealed record LearningResourceDto(string Title, string Url, string Kind, int EstimatedMinutes);
 
+/// <summary>
+/// A lesson brief. <see cref="Prompt"/> is filled only by the single-brief
+/// endpoints — it runs to several kilobytes and the list never renders it.
+/// </summary>
+public sealed record LearningBriefDto(
+    Guid Id,
+    string Title,
+    BriefStatus Status,
+    BriefOrigin Origin,
+    string? LearningGoal,
+    int? EntryLevel,
+    // "S1 · Nasıl çalışır", rendered from the persona's ladder so the frontend
+    // never has to keep its own copy of the rungs.
+    string? EntryLabel,
+    string? DemoIdea,
+    bool PlannerUnavailable,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? GeneratedAt,
+    IReadOnlyList<BriefStoryRefDto> Stories,
+    string? Prompt);
+
+public sealed record BriefStoryRefDto(Guid StoryId, string Slug, string Title);
+
 public sealed record TrendPointDto(DateOnly PeriodStart, int StoryCount, int WeightedImportance);
 
 public sealed record TrendDto(

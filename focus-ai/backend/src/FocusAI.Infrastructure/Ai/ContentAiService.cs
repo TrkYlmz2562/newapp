@@ -1,8 +1,10 @@
 using System.Text;
 using System.Text.Json;
 using FocusAI.Application.Common.Interfaces;
+using FocusAI.Domain.Common;
 using FocusAI.Domain.Entities.Ai;
 using FocusAI.Domain.Enums;
+using FocusAI.Domain.Learning;
 using FocusAI.Infrastructure.Persistence;
 using Microsoft.Extensions.Logging;
 
@@ -318,6 +320,92 @@ public sealed class ContentAiService(
             Resources = resources
         };
     }
+
+    public async Task<BriefPlan?> PlanBriefAsync(
+        string caseFile,
+        int minutes,
+        CancellationToken cancellationToken = default)
+    {
+        var client = clientFactory.Create();
+        if (!client.IsEnabled)
+        {
+            // No extractive fallback here on purpose. Anchor questions derived from
+            // the text by rule would be "X nedir?" — the exact generic output the
+            // brief exists to avoid — and the case file alone is already a usable
+            // lesson, so the caller ships that and says the planner did not run.
+            return null;
+        }
+
+        var prompt = new StringBuilder();
+        prompt.AppendLine($"Kullanıcının bu derse ayırdığı süre: {minutes} dakika");
+        prompt.AppendLine();
+        prompt.AppendLine("DERS DOSYASI:");
+        prompt.AppendLine(caseFile);
+
+        var response = await SendAsync(
+            client,
+            new LlmRequest
+            {
+                SystemPrompt = Prompts.BriefPlanSystem,
+                Messages = [LlmMessage.User(prompt.ToString())],
+                JsonMode = true,
+                MaxTokens = 1200,
+                // Warmer than the summariser: the questions are meant to be the
+                // non-obvious ones, and at 0.2 the model reaches for the definition
+                // question every time.
+                Temperature = 0.5,
+                Operation = "brief-plan"
+            },
+            cancellationToken);
+
+        var json = JsonExtractor.TryExtract(response.Content);
+        if (!response.Succeeded || json is not { } root)
+        {
+            logger.LogWarning(
+                "FocusAI brief planner returned nothing usable: {Error}",
+                response.Error ?? "unparseable JSON");
+
+            return null;
+        }
+
+        var questions = JsonExtractor.GetStringList(root, "anchorQuestions")
+            .Select(q => q.Trim())
+            .Where(q => q.Length > 0)
+            .Take(6)
+            .ToList();
+
+        var goal = JsonExtractor.GetString(root, "learningGoal");
+
+        // A plan with neither a goal nor a question is not a plan; treating it as
+        // one would put an empty "Bu derste" heading in the brief.
+        if (string.IsNullOrWhiteSpace(goal) && questions.Count == 0)
+        {
+            return null;
+        }
+
+        return new BriefPlan
+        {
+            LearningGoal = FieldLimits.Cap(goal, 500),
+            EntryLevel = Math.Clamp(JsonExtractor.GetInt(root, "entryLevel", 1), 0, 4),
+            EntryReason = FieldLimits.Cap(JsonExtractor.GetString(root, "entryReason"), 300),
+            DemoIdea = FieldLimits.Cap(NullIfLiteralNull(JsonExtractor.GetString(root, "demoIdea")), 500),
+            DiagramIdea = FieldLimits.Cap(NullIfLiteralNull(JsonExtractor.GetString(root, "diagramIdea")), 500),
+            AnchorQuestions = questions,
+            CommonMistake = FieldLimits.Cap(JsonExtractor.GetString(root, "commonMistake"), 500),
+            OpenQuestion = FieldLimits.Cap(JsonExtractor.GetString(root, "openQuestion"), 500),
+            Provider = client.Provider.ToString(),
+            Model = response.Model
+        };
+    }
+
+    /// <summary>
+    /// The prompt offers "null" as a value for the optional ideas, and models
+    /// oblige by sending the four-character string rather than a JSON null.
+    /// </summary>
+    private static string? NullIfLiteralNull(string? value) =>
+        string.IsNullOrWhiteSpace(value) || value.Trim().Equals("null", StringComparison.OrdinalIgnoreCase)
+            ? null
+            : value;
 
     public async Task<AskAnswer> AnswerAsync(
         string question,

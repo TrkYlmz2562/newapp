@@ -183,6 +183,25 @@ public interface IContentAiService
         string language,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Turns an already-composed case file into a lesson plan: what this story is
+    /// worth learning, where to enter, and what to build to show it.
+    /// </summary>
+    /// <remarks>
+    /// Takes the rendered case file rather than structured fields so the planner
+    /// reads exactly what the mentor will read — a question grounded in a paragraph
+    /// the mentor never sees is a question the lesson cannot follow up on.
+    ///
+    /// Returns null when the model is unavailable or gave nothing usable. The caller
+    /// ships the case file without a plan rather than substituting generic
+    /// questions, which would be indistinguishable from the study-plan output this
+    /// whole feature exists to replace.
+    /// </remarks>
+    Task<Domain.Learning.BriefPlan?> PlanBriefAsync(
+        string caseFile,
+        int minutes,
+        CancellationToken cancellationToken = default);
+
     Task<AskAnswer> AnswerAsync(
         string question,
         IReadOnlyList<(Guid StoryId, string Title, string Summary)> context,
