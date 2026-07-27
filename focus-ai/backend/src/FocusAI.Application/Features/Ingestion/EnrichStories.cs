@@ -82,6 +82,7 @@ public sealed class EnrichStoriesCommandHandler(
         var errors = new List<string>();
         var published = 0;
         var failures = 0;
+        var skipped = 0;
 
         foreach (var story in stories)
         {
@@ -94,6 +95,22 @@ public sealed class EnrichStoriesCommandHandler(
                 // new piece of coverage, so a story that has been live for days looks
                 // unpublished here. FirstPublishedAt is the durable answer.
                 var wasPublished = story.FirstPublishedAt is not null;
+
+                // The bar the feed applies, applied before the call rather than
+                // after it. Only for stories that have never been live: one that
+                // already earned its place keeps it, and a re-enrichment must not
+                // be able to quietly retire it mid-life.
+                if (!wasPublished && !EnrichmentGate.IsWorthEnriching(GateInput(story)))
+                {
+                    // Suppressed rather than left in Draft, or it would be picked up
+                    // and reconsidered on every single run for ever. Clustering
+                    // revives it if another outlet ever picks the story up, which is
+                    // the one thing that would change the answer.
+                    story.Status = StoryStatus.Suppressed;
+                    story.UpdatedAt = now;
+                    skipped++;
+                    continue;
+                }
 
                 story.Status = StoryStatus.Enriching;
 
@@ -151,6 +168,16 @@ public sealed class EnrichStoriesCommandHandler(
         }
 
         logger.LogInformation("FocusAI enriched and published {Published} stories", published);
+
+        if (skipped > 0)
+        {
+            // Worth saying out loud: this is the pipeline declining to buy something,
+            // and a silent decline is indistinguishable from a feed that has gone quiet.
+            logger.LogInformation(
+                "FocusAI skipped {Skipped} stories below the enrichment gate's projection of {Floor}, unread",
+                skipped,
+                EnrichmentGate.MinProjectedImportance);
+        }
 
         return new IngestionReportDto(0, 0, 0, 0, published, failures, errors);
     }
@@ -646,13 +673,39 @@ public sealed class EnrichStoriesCommandHandler(
         }
     }
 
-    private void ApplyScores(Story story, StorySummaryResult summary, DateTimeOffset now)
+    /// <summary>
+    /// The same figures <see cref="ApplyScores"/> will use, gathered before the call.
+    /// </summary>
+    private static EnrichmentGateInput GateInput(Story story)
     {
-        var sources = story.Articles
+        var sources = DistinctSources(story);
+
+        return new EnrichmentGateInput
+        {
+            DistinctSourceCount = Math.Max(1, story.SourceCount),
+            OfficialSourceCount = story.OfficialSourceCount,
+            MaxSourceTrustWeight = sources.Count > 0 ? sources.Max(s => s.TrustWeight) : 0.5,
+            EngagementScore = story.EngagementScore,
+            PublishedAt = story.PublishedAt,
+            // The story's own category is set by the summariser, so before the call
+            // it is still Unknown; the outlet's usual beat is the best guess there
+            // is, and it only feeds the category multiplier.
+            Category = story.Category != ContentCategory.Unknown
+                ? story.Category
+                : sources.FirstOrDefault()?.DefaultContentCategory ?? ContentCategory.Unknown
+        };
+    }
+
+    private static List<Source> DistinctSources(Story story) =>
+        story.Articles
             .Where(a => a.Source is not null)
             .Select(a => a.Source!)
             .DistinctBy(s => s.Id)
             .ToList();
+
+    private void ApplyScores(Story story, StorySummaryResult summary, DateTimeOffset now)
+    {
+        var sources = DistinctSources(story);
 
         var trustInput = new TrustScoreInput
         {

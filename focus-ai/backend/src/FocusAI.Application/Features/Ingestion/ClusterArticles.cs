@@ -339,6 +339,17 @@ public sealed class ClusterArticlesCommandHandler(
             {
                 story.Status = StoryStatus.Enriching;
             }
+
+            // A story the enrichment gate turned away for want of corroboration, now
+            // corroborated. Being picked up by a second outlet is the one thing that
+            // changes that verdict, so it is also the only thing that revives it —
+            // without this the gate would be a one-way door and a story that went on
+            // to be covered everywhere would stay buried on the strength of how it
+            // looked in its first ten minutes.
+            if (story.Status == StoryStatus.Suppressed && story.SourceCount > outletsBefore)
+            {
+                story.Status = StoryStatus.Draft;
+            }
         }
 
         await db.SaveChangesAsync(cancellationToken);
