@@ -95,6 +95,89 @@ jobs:
             --project src/FocusAI.Infrastructure \
             --startup-project src/FocusAI.Api
 
+  smoke:
+    # Does the API actually come up?
+    #
+    # Everything above this can pass while the process exits on launch, and twice
+    # now it has: an invalid cron expression, and before that a startup step that
+    # was allowed to be fatal. Both compiled, both had green tests, both applied
+    # migrations cleanly, and neither served a single request. The failure looks
+    # identical from a browser to the site being down — no endpoints, no swagger,
+    # no login, and nothing anywhere pointing at the cause.
+    #
+    # So this job does the one thing the others deliberately avoid: it starts the
+    # thing and asks it a question.
+    name: Backend — the API actually starts
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: focus-ai/backend
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: focusai
+          POSTGRES_PASSWORD: focusai
+          POSTGRES_DB: focusai
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U focusai"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - run: dotnet restore
+
+      - run: dotnet build --configuration Release --no-restore
+
+      - name: Start the API and ask it for /health
+        env:
+          ASPNETCORE_URLS: http://127.0.0.1:5210
+          ASPNETCORE_ENVIRONMENT: Development
+          ConnectionStrings__Postgres: Host=localhost;Port=5432;Database=focusai;Username=focusai;Password=focusai
+          Jwt__SigningKey: ci-only-signing-key-not-a-secret-32-bytes-long
+          # Background jobs are scheduled during startup, which is exactly where
+          # the cron bug threw — so they stay on for this run.
+          Ingestion__EnableBackgroundJobs: 'true'
+        run: |
+          set -euo pipefail
+
+          dotnet run --project src/FocusAI.Api --configuration Release --no-build > /tmp/api.log 2>&1 &
+          api=$!
+
+          for i in $(seq 1 60); do
+            if ! kill -0 "$api" 2>/dev/null; then
+              echo "::error::The API exited during startup."
+              tail -80 /tmp/api.log
+              exit 1
+            fi
+
+            if curl -fsS http://127.0.0.1:5210/health > /dev/null 2>&1; then
+              echo "The API answered /health after ${i}s."
+              # Swagger is what a developer opens first, so it is checked too.
+              curl -fsS http://127.0.0.1:5210/swagger/v1/swagger.json > /dev/null
+              echo "Swagger is being served."
+              kill "$api" 2>/dev/null || true
+              exit 0
+            fi
+
+            sleep 1
+          done
+
+          echo "::error::The API never answered /health."
+          tail -80 /tmp/api.log
+          kill "$api" 2>/dev/null || true
+          exit 1
+
   frontend:
     name: Frontend — typecheck & build
     runs-on: ubuntu-latest
